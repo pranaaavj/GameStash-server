@@ -2,6 +2,7 @@ import 'dotenv/config';
 import 'express-async-errors';
 import cors from './config/cors.config.js';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import router from './routers/index.routes.js';
 import express from 'express';
 import connectDB from './config/database.js';
@@ -15,6 +16,7 @@ const app = express();
 app.use(cors); // Cross origin resource sharing
 app.use(limiter); // Rate limiter
 app.use(helmet()); // Security headers
+app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));

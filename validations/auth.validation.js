@@ -16,6 +16,10 @@ export const registerSchema = Joi.object({
       'string.pattern.base':
         'Password must be at least 6 characters with one number and one alphabet',
     }),
+  phoneNumber: Joi.string().required().max(10).messages({
+    'string.empty': 'Number cannot be empty',
+    'string.max': 'Number cannot exceed 10 digits',
+  }),
 });
 
 export const loginSchema = Joi.object({

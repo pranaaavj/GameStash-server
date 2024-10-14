@@ -18,11 +18,11 @@ const OtpSchema = new mongoose.Schema({
   expiresIn: {
     type: Date,
     default: Date.now(),
-  },
+  }, //todo Complete the expires in functionality
   createdAt: {
     type: Date,
     default: Date.now(),
-    expires: 60 * 5,
+    expires: 60 * 60,
   },
 });
 
