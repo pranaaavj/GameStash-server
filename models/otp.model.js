@@ -18,7 +18,9 @@ const OtpSchema = new mongoose.Schema({
   expiresIn: {
     type: Date,
     default: Date.now(),
-  }, //todo Complete the expires in functionality
+  }, //TODO: Complete the expires in functionality
+
+  //TODO: Add an otp type functionality to handle multiple otp's for a user
   createdAt: {
     type: Date,
     default: Date.now(),

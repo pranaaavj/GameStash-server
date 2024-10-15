@@ -6,9 +6,9 @@ import {
   refreshToken,
   sentOtpUser,
   verifyOtpUser,
-  forgetPasswordUser,
-  verifyOtpPasswordUser,
-  resetPasswordUser,
+  forgetPassUser,
+  resetPassUser,
+  verifyOtpPassUser,
 } from '../controllers/auth.controller.js';
 
 const router = express.Router();
@@ -20,8 +20,8 @@ router
   .post('/verify-otp', verifyOtpUser)
   .post('/register', registerUser)
   .post('/refresh-token', refreshToken)
-  .post('/forget-password', forgetPasswordUser)
-  .post('/verify-otp-password', verifyOtpPasswordUser)
-  .post('/reset-password', resetPasswordUser);
+  .post('/forget-pass', forgetPassUser)
+  .post('/verify-otp-pass', verifyOtpPassUser)
+  .post('/reset-pass', resetPassUser);
 
 export default router;

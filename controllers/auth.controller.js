@@ -1,23 +1,23 @@
 import {
-  BadRequestError,
-  NotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
-  ConflictError,
-} from '../errors/index.js';
-import {
-  createAccessToken,
-  createRefreshToken,
   verifyToken,
   generateOtp,
+  createAccessToken,
+  createRefreshToken,
 } from '../utils/index.js';
+import {
+  NotFoundError,
+  ConflictError,
+  BadRequestError,
+  ForbiddenError,
+  UnauthorizedError,
+} from '../errors/index.js';
 import {
   loginSchema,
   registerSchema,
   verifyOtpSchema,
 } from '../validations/auth.validation.js';
-import User from '../models/user.model.js';
 import Otp from '../models/otp.model.js';
+import User from '../models/user.model.js';
 
 /**
  * @route auth/login
@@ -31,12 +31,16 @@ export const loginUser = async (req, res) => {
 
   const user = await User.findOne({ email });
   if (!user) {
-    throw new NotFoundError("You're not registered, Please sign up first.");
+    throw new NotFoundError(
+      "This email isn't registered. Please register to continue."
+    );
   }
 
   const isPasswordCorrect = await user.comparePassword(password);
   if (!isPasswordCorrect) {
-    throw new UnauthorizedError('Invalid Credentials');
+    throw new UnauthorizedError(
+      'Incorrect email or password. Please check your details and try again.'
+    );
   }
 
   const accessToken = await createAccessToken(user);
@@ -51,7 +55,7 @@ export const loginUser = async (req, res) => {
     })
     .json({
       success: true,
-      message: 'User successfully logged in',
+      message: 'You’ve successfully logged in.',
       data: { user, accessToken },
     });
 };
@@ -63,7 +67,7 @@ export const loginUser = async (req, res) => {
  */
 export const logoutUser = (req, res) => {
   const refreshToken = req.cookies?.jwt;
-  if (!refreshToken) throw new BadRequestError('No refresh token');
+  if (!refreshToken) throw new BadRequestError('No refresh token found.');
 
   res
     .clearCookie('jwt', {
@@ -73,7 +77,7 @@ export const logoutUser = (req, res) => {
     })
     .json({
       success: true,
-      message: 'User logged out successfully',
+      message: 'You have been logged out successfully.',
       data: null,
     });
 };
@@ -85,18 +89,20 @@ export const logoutUser = (req, res) => {
  */
 export const sentOtpUser = async (req, res) => {
   const { email } = req.body;
-  if (!email) throw new BadRequestError('No email provided');
+  if (!email) throw new BadRequestError('No email was provided.');
 
   const user = await User.findOne({ email });
   if (user)
     throw new ConflictError(
-      "You're already verified, Please login or use another email"
+      "You're already verified, Please log in or use a different email."
     );
 
   const otpSent = await Otp.findOne({ email });
   //Todo: Add retry otp functionality
   if (otpSent)
-    throw new ConflictError('OTP already sent. Please wait or retry');
+    throw new ConflictError(
+      'OTP has already been sent. Please wait or try again.'
+    );
 
   const otp = generateOtp();
   const otpExist = await Otp.findOne({ otp });
@@ -108,7 +114,7 @@ export const sentOtpUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP sent successfully',
+    message: 'OTP sent successfully, Please check your email.',
     data: null,
   });
 };
@@ -116,7 +122,7 @@ export const sentOtpUser = async (req, res) => {
 /**
  * @route auth/verify-otp
  * @desc  Verifying otp sent to user via email
- * @access Private - Only users who are otp verified
+ * @access Private - Only users who have OTP status 'pending'
  */
 export const verifyOtpUser = async (req, res) => {
   const { otp, email } = await verifyOtpSchema.validateAsync(req.body, {
@@ -124,10 +130,10 @@ export const verifyOtpUser = async (req, res) => {
   });
 
   const correctOtp = await Otp.findOne({ email });
-  if (!correctOtp) throw new NotFoundError('Please send the otp first.');
+  if (!correctOtp) throw new NotFoundError('Please request an OTP first.');
 
   if (correctOtp?.otp !== otp) {
-    throw new UnauthorizedError('Invalid or expired OTP, Try again later');
+    throw new UnauthorizedError('Invalid or expired OTP, Try again later.');
   }
 
   correctOtp.otpVerified = true;
@@ -135,7 +141,7 @@ export const verifyOtpUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP verification successful',
+    message: 'Email verified! Please complete your registration.',
     data: null,
   });
 };
@@ -143,7 +149,7 @@ export const verifyOtpUser = async (req, res) => {
 /**
  * @route auth/register
  * @desc  User register after otp validation
- * @access Private - Only users who are otp verified
+ * @access Private - Only users who have OTP status 'verified'
  */
 export const registerUser = async (req, res) => {
   const { name, email, password, phoneNumber } =
@@ -165,21 +171,21 @@ export const registerUser = async (req, res) => {
 
   res.send({
     success: true,
-    message: 'User created successfully',
+    message: 'You are registered successfully. Please log in.',
     data: user,
   });
 };
 
 /**
  * @route auth/refresh-token
- * @desc  Validating refresh token and generating new access token
+ * @desc  Validating refresh token and generating access token
  * @access Public
  */
 export const refreshToken = async (req, res) => {
   const refreshToken = req.cookies?.jwt;
 
   if (!refreshToken)
-    throw new BadRequestError('Refresh token is missing from the request');
+    throw new BadRequestError('Refresh token is missing from the request.');
 
   const decoded = await verifyToken(
     refreshToken,
@@ -188,33 +194,38 @@ export const refreshToken = async (req, res) => {
 
   const user = await User.findById({ _id: decoded.userId });
   if (!user)
-    throw new ForbiddenError('Invalid refresh token, User not authorized');
+    throw new ForbiddenError('Invalid refresh token, You are not authorized.');
 
   const accessToken = await createAccessToken(user);
 
   res.json({
     success: true,
-    message: 'Generated Access token',
+    message: 'Access token generated.',
     data: { accessToken },
   });
 };
 
 /**
- * @route auth/forget-password
+ * @route auth/forget-pass
  * @desc  sent Otp to user email
  * @access Public
  */
-export const forgetPasswordUser = async (req, res) => {
+export const forgetPassUser = async (req, res) => {
   const { email } = req.body;
-  if (!email) throw new BadRequestError('No email provided');
+  if (!email) throw new BadRequestError('No email was provided.');
 
   const user = await User.findOne({ email });
-  if (!user) throw new ConflictError('No user found with this email');
+  if (!user)
+    throw new ConflictError(
+      'No account found with this email. Please register first.'
+    );
 
   const otpSent = await Otp.findOne({ email });
   //Todo: Add retry otp functionality
   if (otpSent)
-    throw new ConflictError('OTP already sent. Please wait or retry');
+    throw new ConflictError(
+      'OTP has already been sent. Please wait or try again.'
+    );
 
   const otp = generateOtp();
   const otpExist = await Otp.findOne({ otp });
@@ -226,26 +237,26 @@ export const forgetPasswordUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP sent successfully',
+    message: 'OTP sent successfully, Please check your email.',
     data: null,
   });
 };
 
 /**
- * @route auth/verify-otp-password
+ * @route auth/verify-otp-pass
  * @desc  Verifying the otp with otp schema
  * @access Private - Users who have sent the otp
  */
-export const verifyOtpPasswordUser = async (req, res) => {
+export const verifyOtpPassUser = async (req, res) => {
   const { otp, email } = await verifyOtpSchema.validateAsync(req.body, {
     abortEarly: false,
   });
-
+  console.log(otp, email);
   const correctOtp = await Otp.findOne({ email });
-  if (!correctOtp) throw new NotFoundError('Please send the otp first');
+  if (!correctOtp) throw new NotFoundError('Please request an OTP first.');
 
   if (correctOtp?.otp !== otp) {
-    throw new UnauthorizedError('Invalid or expired OTP, Try again later');
+    throw new UnauthorizedError('Invalid or expired OTP, Try again later.');
   }
 
   correctOtp.otpVerified = true;
@@ -253,17 +264,17 @@ export const verifyOtpPasswordUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP verification successful',
+    message: 'OTP verified successfully! Please enter your new password.',
     data: null,
   });
 };
 
 /**
- * @route auth/reset-password
+ * @route auth/reset-pass
  * @desc  sent Otp to user email
  * @access Private - Users who have sent the otp
  */
-export const resetPasswordUser = async (req, res) => {
+export const resetPassUser = async (req, res) => {
   const { email, password } = await loginSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -271,7 +282,7 @@ export const resetPasswordUser = async (req, res) => {
   const correctOtp = await Otp.findOne({ email });
 
   if (!correctOtp?.otpVerified) {
-    throw new UnauthorizedError('Otp is not verified');
+    throw new UnauthorizedError('OTP verification failed. Please try again.');
   }
 
   const user = await User.findOne({ email });
@@ -280,7 +291,8 @@ export const resetPasswordUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Password updated successfully',
+    message:
+      'Your password has been updated successfully. You can now log in with your new password.',
     data: null,
   });
 };
