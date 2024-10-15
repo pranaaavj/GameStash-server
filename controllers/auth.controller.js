@@ -10,6 +10,7 @@ import {
   BadRequestError,
   ForbiddenError,
   UnauthorizedError,
+  TooManyRequestError,
 } from '../errors/index.js';
 import {
   loginSchema,
@@ -83,70 +84,6 @@ export const logoutUser = (req, res) => {
 };
 
 /**
- * @route auth/sent-otp
- * @desc  Creating otp and storing the email
- * @access Public
- */
-export const sentOtpUser = async (req, res) => {
-  const { email } = req.body;
-  if (!email) throw new BadRequestError('No email was provided.');
-
-  const user = await User.findOne({ email });
-  if (user)
-    throw new ConflictError(
-      "You're already verified, Please log in or use a different email."
-    );
-
-  const otpSent = await Otp.findOne({ email });
-  //Todo: Add retry otp functionality
-  if (otpSent)
-    throw new ConflictError(
-      'OTP has already been sent. Please wait or try again.'
-    );
-
-  const otp = generateOtp();
-  const otpExist = await Otp.findOne({ otp });
-  while (otpExist) {
-    otp = generateOtp();
-    otpExist = await Otp.findOne({ otp });
-  }
-  await Otp.create({ email, otp });
-
-  res.status(200).json({
-    success: true,
-    message: 'OTP sent successfully, Please check your email.',
-    data: null,
-  });
-};
-
-/**
- * @route auth/verify-otp
- * @desc  Verifying otp sent to user via email
- * @access Private - Only users who have OTP status 'pending'
- */
-export const verifyOtpUser = async (req, res) => {
-  const { otp, email } = await verifyOtpSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-
-  const correctOtp = await Otp.findOne({ email });
-  if (!correctOtp) throw new NotFoundError('Please request an OTP first.');
-
-  if (correctOtp?.otp !== otp) {
-    throw new UnauthorizedError('Invalid or expired OTP, Try again later.');
-  }
-
-  correctOtp.otpVerified = true;
-  await correctOtp.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'Email verified! Please complete your registration.',
-    data: null,
-  });
-};
-
-/**
  * @route auth/register
  * @desc  User register after otp validation
  * @access Private - Only users who have OTP status 'verified'
@@ -206,70 +143,6 @@ export const refreshToken = async (req, res) => {
 };
 
 /**
- * @route auth/forget-pass
- * @desc  sent Otp to user email
- * @access Public
- */
-export const forgetPassUser = async (req, res) => {
-  const { email } = req.body;
-  if (!email) throw new BadRequestError('No email was provided.');
-
-  const user = await User.findOne({ email });
-  if (!user)
-    throw new ConflictError(
-      'No account found with this email. Please register first.'
-    );
-
-  const otpSent = await Otp.findOne({ email });
-  //Todo: Add retry otp functionality
-  if (otpSent)
-    throw new ConflictError(
-      'OTP has already been sent. Please wait or try again.'
-    );
-
-  const otp = generateOtp();
-  const otpExist = await Otp.findOne({ otp });
-  while (otpExist) {
-    otp = generateOtp();
-    otpExist = await Otp.findOne({ otp });
-  }
-  await Otp.create({ email, otp });
-
-  res.status(200).json({
-    success: true,
-    message: 'OTP sent successfully, Please check your email.',
-    data: null,
-  });
-};
-
-/**
- * @route auth/verify-otp-pass
- * @desc  Verifying the otp with otp schema
- * @access Private - Users who have sent the otp
- */
-export const verifyOtpPassUser = async (req, res) => {
-  const { otp, email } = await verifyOtpSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-  console.log(otp, email);
-  const correctOtp = await Otp.findOne({ email });
-  if (!correctOtp) throw new NotFoundError('Please request an OTP first.');
-
-  if (correctOtp?.otp !== otp) {
-    throw new UnauthorizedError('Invalid or expired OTP, Try again later.');
-  }
-
-  correctOtp.otpVerified = true;
-  await correctOtp.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'OTP verified successfully! Please enter your new password.',
-    data: null,
-  });
-};
-
-/**
  * @route auth/reset-pass
  * @desc  sent Otp to user email
  * @access Private - Users who have sent the otp
@@ -289,10 +162,148 @@ export const resetPassUser = async (req, res) => {
   user.password = password;
   await user.save();
 
+  await Otp.deleteOne({ _id: correctOtp._id });
+
   res.status(200).json({
     success: true,
     message:
       'Your password has been updated successfully. You can now log in with your new password.',
+    data: null,
+  });
+};
+
+/**
+ * @route auth/send-otp
+ * @desc  sent Otp to user email
+ * @access Private - Users who have provided the email
+ */
+export const sendOtpUser = async (req, res) => {
+  const { email, type } = req.body;
+  if (!email || !type)
+    throw new BadRequestError('Email or type was not provided.');
+
+  await Otp.deleteMany({ email, type });
+
+  const user = await User.findOne({ email });
+  if (user && type == 'registration') {
+    throw new ConflictError(
+      "You're already verified, Please log in or use a different email."
+    );
+  }
+
+  if (!user && type == 'forgetPassword') {
+    throw new ConflictError(
+      'No account found with this email. Please register first.'
+    );
+  }
+
+  const otp = generateOtp();
+  const otpExist = await Otp.findOne({ otp });
+  while (otpExist) {
+    otp = generateOtp();
+    otpExist = await Otp.findOne({ otp });
+  }
+
+  await Otp.create({
+    email,
+    otp,
+    type,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 10),
+    createdAt: new Date(),
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP sent successfully, Please check your email.',
+    data: null,
+  });
+};
+
+/**
+ * @route auth/verify-otp
+ * @desc  Verifying the otp with otp schema
+ * @access Private - Users who have sent the otp
+ */
+export const verifyOtpUser = async (req, res) => {
+  const { otp, email, type } = await verifyOtpSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const otpRecord = await Otp.findOne({ email, otp, type });
+
+  if (!otpRecord)
+    throw new NotFoundError(
+      'Invalid OTP. Please check your email or try again later.'
+    );
+
+  if (Date.now() > otpRecord.expiresAt - 1000 * 60 * 5) {
+    throw new UnauthorizedError('OTP has expired, please try again.');
+  }
+
+  if (otpRecord.otpVerified) {
+    throw new ConflictError(
+      "You're already verified, Please log in or use a different email."
+    );
+  }
+
+  otpRecord.otpVerified = true;
+  await otpRecord.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP verified successfully! Please enter your new password.',
+    data: null,
+  });
+};
+
+/**
+ * @route auth/reset-otp
+ * @desc  Resetting the otp after one minute.
+ * @access Private - Users who have sent the otp
+ */
+export const resetOtpUser = async (req, res) => {
+  const { email, type } = req.body;
+  if (!email || !type)
+    throw new BadRequestError('Email or type was not provided.');
+
+  const otpRecord = await Otp.findOne({ email, type }).sort({
+    createdAt: -1,
+  });
+
+  if (!otpRecord) {
+    throw new NotFoundError('Please request an OTP first.');
+  }
+
+  const currentTime = Date.now();
+  const otpCreatedTime = new Date(otpRecord.createdAt).getTime();
+  const resetTime = (currentTime - otpCreatedTime) / (1000 * 60);
+
+  if (resetTime < 1) {
+    throw new TooManyRequestError(
+      'Please wait 1 minute before requesting a new OTP'
+    );
+  }
+
+  const newOtp = generateOtp();
+  const otpExist = await Otp.findOne({ newOtp });
+  while (otpExist) {
+    newOtp = generateOtp();
+    otpExist = await Otp.findOne({ newOtp });
+  }
+
+  await Otp.deleteOne({ _id: otpRecord._id });
+
+  await Otp.create({
+    email,
+    otp: newOtp,
+    type,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 10),
+    createdAt: new Date(),
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'New OTP has been sent successfully.',
     data: null,
   });
 };

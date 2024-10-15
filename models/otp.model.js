@@ -11,22 +11,25 @@ const OtpSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
+  type: {
+    type: String,
+    enum: ['registration', 'forgetPassword'],
+    required: true,
+  },
   otpVerified: {
     type: Boolean,
     default: false,
   },
-  expiresIn: {
+  expiresAt: {
     type: Date,
-    default: Date.now(),
-  }, //TODO: Complete the expires in functionality
-
-  //TODO: Add an otp type functionality to handle multiple otp's for a user
+    required: true,
+  },
   createdAt: {
     type: Date,
-    default: Date.now(),
-    expires: 60 * 60,
   },
 });
+
+OtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 OtpSchema.pre('save', function (next) {
   if (this.isNew) {

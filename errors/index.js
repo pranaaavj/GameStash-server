@@ -5,5 +5,6 @@ export { ForbiddenError } from './forbidden.error.js';
 export { BadGatewayError } from './badGateway.error.js';
 export { BadRequestError } from './badRequest.error.js';
 export { UnauthorizedError } from './unauthorized.error.js';
+export { TooManyRequestError } from './tooManyRequest.error.js';
 export { InternalServerError } from './internalServer.error.js';
 export { ServiceUnavailableError } from './serviceUnavailable.error.js';

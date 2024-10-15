@@ -48,4 +48,8 @@ export const verifyOtpSchema = Joi.object({
     'string.email': 'Please enter a valid email',
     'any.required': '{{#label}} cannot be empty.',
   }),
+  type: Joi.string().required().messages({
+    'string.empty': 'Otp cannot be empty',
+    'any.required': '{{#label}} cannot be empty.',
+  }),
 });
