@@ -13,7 +13,7 @@ const OtpSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['registration', 'forgetPassword'],
+    enum: ['registration', 'forgotPassword'],
     required: true,
   },
   otpVerified: {
@@ -26,19 +26,25 @@ const OtpSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
+    default: Date.now,
   },
 });
 
 OtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 OtpSchema.pre('save', function (next) {
+  const message =
+    this.type === 'registration'
+      ? 'account creation'
+      : 'resetting your password';
+
   if (this.isNew) {
     setImmediate(async () => {
       try {
         await sendEmail(
           this.email,
           'Your OTP for GameStash Account Creation',
-          `<h3>Welcome to GameStash! Your One-Time Password (OTP) for account creation is: ${this.otp}</h3> 
+          `<h3>Welcome to GameStash! Your One-Time Password (OTP) for ${message} is: ${this.otp}</h3> 
     <p>Please enter this code within the next 10 minutes to complete the process.</p>`
         );
       } catch (error) {

@@ -5,12 +5,14 @@ export const verifyAuth =
   (requiredRole = ['user']) =>
   async (req, res, next) => {
     const header = req.headers?.authorization || req.headers?.Authorization;
-    if (!header.startsWith('Bearer '))
+
+    if (!header || !header.startsWith('Bearer '))
       throw new UnauthorizedError(
         'Authorization token is missing. Access Denied'
       );
 
     const token = header.split('Bearer ')[1];
+
     const decoded = await verifyToken(token, process.env.ACCESS_TOKEN_SECRET);
 
     req.user = {

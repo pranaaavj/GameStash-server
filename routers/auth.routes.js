@@ -20,6 +20,6 @@ router
   .post('/reset-otp', resetOtpUser)
   .post('/register', registerUser)
   .post('/reset-pass', resetPassUser)
-  .post('/refresh-token', refreshToken);
+  .get('/refresh-token', refreshToken);
 
 export default router;

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import 'express-async-errors';
-import cors from './config/cors.config.js';
+// import cors from './config/cors.config.js';
+import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import router from './routers/index.routes.js';
@@ -13,12 +14,17 @@ import errorHandler from './middlewares/error.middleware.js';
 const app = express();
 
 // Middlewares
-app.use(cors); // Cross origin resource sharing
-app.use(limiter); // Rate limiter
-app.use(helmet()); // Security headers
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: 'http://localhost:5173', // Exact frontend origin
+    credentials: true, // Needed to allow cookies in cross-origin requests
+  })
+); // Cross origin resource sharing
+// app.use(limiter); // Rate limiter
+// app.use(helmet()); // Security headers
 app.use(morgan('dev'));
 app.use(express.json());
-app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes

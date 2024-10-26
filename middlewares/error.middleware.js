@@ -6,7 +6,10 @@ const errorHandler = (err, req, res, next) => {
   };
   if (err.isJoi) {
     customError.statusCode = 400;
-    customError.message = err?.details.map((err) => err?.message);
+    customError.message = err?.details
+      .map((err) => err?.message)
+      .join(', ')
+      .replace(/['"]+/g, '');
   }
   // Handling mongoose duplicate value errors
   else if (err.code || err.code === 11000) {
@@ -32,6 +35,7 @@ const errorHandler = (err, req, res, next) => {
     customError.statusCode = 401;
     customError.message = 'Your token has expired. Please log in again.';
   }
+
   res.status(customError.statusCode).json({
     success: false,
     message: customError.message,

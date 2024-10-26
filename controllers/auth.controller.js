@@ -21,7 +21,7 @@ import Otp from '../models/otp.model.js';
 import User from '../models/user.model.js';
 
 /**
- * @route auth/login
+ * @route POST - auth/login
  * @desc  User login
  * @access Public
  */
@@ -51,7 +51,7 @@ export const loginUser = async (req, res) => {
     .cookie('jwt', refreshToken, {
       httpOnly: true,
       sameSite: 'none',
-      secure: process.env.NODE_ENV !== 'development',
+      secure: true,
       maxAge: 1000 * 60 * 60 * 24,
     })
     .json({
@@ -62,7 +62,7 @@ export const loginUser = async (req, res) => {
 };
 
 /**
- * @route auth/logout
+ * @route POST - auth/logout
  * @desc  Logs out user and clears cookies
  * @access Public
  */
@@ -84,7 +84,7 @@ export const logoutUser = (req, res) => {
 };
 
 /**
- * @route auth/register
+ * @route POST - auth/register
  * @desc  User register after otp validation
  * @access Private - Only users who have OTP status 'verified'
  */
@@ -93,10 +93,15 @@ export const registerUser = async (req, res) => {
     await registerSchema.validateAsync(req.body, {
       abortEarly: false,
     });
+
   const userOtp = await Otp.findOne({ email });
   if (!userOtp?.otpVerified) {
     throw new UnauthorizedError('Please verify your email first.');
   }
+
+  await Otp.findByIdAndDelete({
+    _id: userOtp._id,
+  });
 
   const user = await User.create({
     name,
@@ -114,7 +119,7 @@ export const registerUser = async (req, res) => {
 };
 
 /**
- * @route auth/refresh-token
+ * @route GET - auth/refresh-token
  * @desc  Validating refresh token and generating access token
  * @access Public
  */
@@ -129,7 +134,7 @@ export const refreshToken = async (req, res) => {
     process.env.REFRESH_TOKEN_SECRET
   );
 
-  const user = await User.findById({ _id: decoded.userId });
+  const user = await User.findById({ _id: decoded?.userId });
   if (!user)
     throw new ForbiddenError('Invalid refresh token, You are not authorized.');
 
@@ -143,7 +148,7 @@ export const refreshToken = async (req, res) => {
 };
 
 /**
- * @route auth/reset-pass
+ * @route POST - auth/reset-pass
  * @desc  sent Otp to user email
  * @access Private - Users who have sent the otp
  */
@@ -155,10 +160,15 @@ export const resetPassUser = async (req, res) => {
   const correctOtp = await Otp.findOne({ email });
 
   if (!correctOtp?.otpVerified) {
-    throw new UnauthorizedError('OTP verification failed. Please try again.');
+    throw new UnauthorizedError('Please verify with OTP before proceeding.');
   }
 
   const user = await User.findOne({ email });
+  if (!user) {
+    throw new NotFoundError(
+      "This email isn't registered. Please register to continue."
+    );
+  }
   user.password = password;
   await user.save();
 
@@ -173,7 +183,7 @@ export const resetPassUser = async (req, res) => {
 };
 
 /**
- * @route auth/send-otp
+ * @route POST - auth/send-otp
  * @desc  sent Otp to user email
  * @access Private - Users who have provided the email
  */
@@ -191,7 +201,7 @@ export const sendOtpUser = async (req, res) => {
     );
   }
 
-  if (!user && type == 'forgetPassword') {
+  if (!user && type == 'forgotPassword') {
     throw new ConflictError(
       'No account found with this email. Please register first.'
     );
@@ -220,7 +230,7 @@ export const sendOtpUser = async (req, res) => {
 };
 
 /**
- * @route auth/verify-otp
+ * @route POST - auth/verify-otp
  * @desc  Verifying the otp with otp schema
  * @access Private - Users who have sent the otp
  */
@@ -251,18 +261,19 @@ export const verifyOtpUser = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP verified successfully! Please enter your new password.',
+    message: 'OTP verified successfully!',
     data: null,
   });
 };
 
 /**
- * @route auth/reset-otp
+ * @route POST - auth/reset-otp
  * @desc  Resetting the otp after one minute.
- * @access Private - Users who have sent the otp
+ * @access Private - Users who have sent the otp can reset
  */
 export const resetOtpUser = async (req, res) => {
   const { email, type } = req.body;
+
   if (!email || !type)
     throw new BadRequestError('Email or type was not provided.');
 
@@ -291,7 +302,7 @@ export const resetOtpUser = async (req, res) => {
     otpExist = await Otp.findOne({ newOtp });
   }
 
-  await Otp.deleteOne({ _id: otpRecord._id });
+  await Otp.findByIdAndDelete({ _id: otpRecord._id });
 
   await Otp.create({
     email,
