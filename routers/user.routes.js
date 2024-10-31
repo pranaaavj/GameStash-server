@@ -1,9 +1,8 @@
 import express from 'express';
-import { homePage } from '../controllers/user.controller.js';
-import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
+import { getProducts } from '../controllers/product.controller.js';
 
 const router = express.Router();
 
-router.get('/home-page', verifyAuth(['admin']), homePage);
+router.get('/products', getProducts);
 
 export default router;

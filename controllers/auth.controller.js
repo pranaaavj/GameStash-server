@@ -46,12 +46,13 @@ export const loginUser = async (req, res) => {
 
   const accessToken = await createAccessToken(user);
   const refreshToken = await createRefreshToken(user);
+
   res
     .status(200)
     .cookie('jwt', refreshToken, {
       httpOnly: true,
-      sameSite: 'none',
       secure: true,
+      sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24,
     })
     .json({
@@ -93,6 +94,8 @@ export const registerUser = async (req, res) => {
     await registerSchema.validateAsync(req.body, {
       abortEarly: false,
     });
+
+  // User exist is validated in the mongoose validation
 
   const userOtp = await Otp.findOne({ email });
   if (!userOtp?.otpVerified) {

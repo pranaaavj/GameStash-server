@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import 'express-async-errors';
-// import cors from './config/cors.config.js';
-import cors from 'cors';
+import cors from './config/cors.config.js';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import router from './routers/index.routes.js';
@@ -10,26 +9,22 @@ import connectDB from './config/database.js';
 import { limiter } from './utils/index.js';
 import cookieParser from 'cookie-parser';
 import errorHandler from './middlewares/error.middleware.js';
+import { verifyAuth } from './middlewares/verifyAuth.middleware.js';
 
 const app = express();
 
 // Middlewares
-app.use(cookieParser());
-app.use(
-  cors({
-    origin: 'http://localhost:5173', // Exact frontend origin
-    credentials: true, // Needed to allow cookies in cross-origin requests
-  })
-); // Cross origin resource sharing
-// app.use(limiter); // Rate limiter
-// app.use(helmet()); // Security headers
+app.use(cors); // Cross origin resource sharing
+app.use(cookieParser()); // For parsing cookies
+app.use(limiter); // Rate limiter
+app.use(helmet()); // Security headers
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api', router);
-
+app.get('/test', verifyAuth(), (req, res) => res.send('hello'));
 // Global Error handler
 app.use(errorHandler);
 
