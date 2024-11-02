@@ -6,7 +6,7 @@ import {
 import Product from '../models/product.model.js';
 import Brand from '../models/brand.model.js';
 import Genre from '../models/genre.model.js';
-import { paginate } from '../utils/index.js';
+import { aggregatePaginate, paginate } from '../utils/index.js';
 import { isValidObjectId } from 'mongoose';
 
 // Admin Side
@@ -49,7 +49,7 @@ export const getAllProducts = async (req, res) => {
 
 /**
  * @route GET - admin/products/:productId
- * @desc  Admin || User  - Getting one product
+ * @desc  Admin - Getting one product
  * @access Private
  */
 export const getOneProduct = async (req, res) => {
@@ -78,10 +78,19 @@ export const getOneProduct = async (req, res) => {
  * @access Private
  */
 export const addProduct = async (req, res) => {
-  const { name, price, genre, platform, brand, stock, description, images } =
-    await productSchema.validateAsync(req.body, {
-      abortEarly: false,
-    });
+  const {
+    name,
+    price,
+    genre,
+    platform,
+    brand,
+    stock,
+    description,
+    images,
+    systemRequirements,
+  } = await productSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
 
   // Checking for brand
   const brandExist = await Brand.findOne({ name: brand });
@@ -104,9 +113,10 @@ export const addProduct = async (req, res) => {
     brand: brandExist._id,
     stock,
     description,
+    systemRequirements,
   });
 
-  res.status(200).json({
+  res.status(201).json({
     success: true,
     message: 'Product added successfully',
     data: null,
@@ -165,7 +175,7 @@ export const editProduct = async (req, res) => {
 
   await oldProduct.save();
 
-  res.status(200).json({
+  res.status(204).json({
     success: true,
     message: 'Product updated successfully.',
     data: oldProduct,
@@ -195,7 +205,7 @@ export const toggleProductList = async (req, res) => {
   product.isActive = !product.isActive;
   await product.save();
 
-  res.status(200).json({
+  res.status(204).json({
     success: true,
     message: `Product ${
       product.isActive ? 'Listed' : 'UnListed'
@@ -209,7 +219,7 @@ export const toggleProductList = async (req, res) => {
 /**
  * @route GET - user/products
  * @desc  User - Listing specific products
- * @access Private
+ * @access Public
  */
 export const getProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -217,24 +227,105 @@ export const getProducts = async (req, res) => {
 
   // Custom query options
   const queryOptions = {
+    filter: { isActive: true },
     populate: [
-      { path: 'genre', select: 'name -_id' },
-      { path: 'brand', select: 'name -_id' },
+      {
+        from: 'genres',
+        localField: 'genre',
+        as: 'genre',
+        match: { isActive: true },
+        single: true,
+      },
+      {
+        from: 'brands',
+        localField: 'brand',
+        as: 'brand',
+        match: { isActive: true },
+        single: true,
+      },
     ],
   };
 
   // Function to paginate the data
-  const products = await paginate(Product, page, limit, queryOptions);
+  const products = await aggregatePaginate(Product, page, limit, queryOptions);
 
   if (products?.result?.length === 0) {
     throw new NotFoundError('No products found');
   }
 
-  console.log(products);
-
   res.status(200).json({
     success: true,
     message: 'User products',
+    data: {
+      products: products.result,
+      totalPages: products.totalPages,
+      currentPage: products.currentPage,
+    },
+  });
+};
+
+/**
+ * @route GET - /product/:productId
+ * @desc  User - Getting one product
+ * @access Public
+ */
+export const getProduct = async (req, res) => {
+  const productId = req.params.productId.trim();
+
+  // Validating object Id
+  if (!productId || !isValidObjectId(productId)) {
+    throw new BadRequestError('Invalid product ID format.');
+  }
+
+  const product = await Product.findById(productId).populate('genre brand');
+  if (!product) {
+    throw new NotFoundError('No Product found.');
+  }
+  console.log(product);
+  res.status(200).json({
+    success: true,
+    message: 'Product fetched successfully.',
+    data: product,
+  });
+};
+
+/**
+ * @route GET - /products/:genre
+ * @desc  User - Getting one product by the genre
+ * @access Public
+ */
+export const getProductsByGenre = async (req, res) => {
+  const genreName = req.params.genre;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  if (!genreName) {
+    throw new BadRequestError('Genre must be provided');
+  }
+
+  const genre = await Genre.findOne({ name: genreName });
+  if (!genre) {
+    throw new NotFoundError('Genre not found.');
+  }
+
+  const queryOptions = {
+    filter: { genre: genre._id, isActive: true },
+    populate: [
+      { path: 'genre', select: 'name isActive', match: { isActive: true } },
+      { path: 'brand', select: 'name isActive', match: { isActive: true } },
+    ],
+    sort: { updatedAt: -1 },
+  };
+
+  const products = await paginate(Product, page, limit, queryOptions);
+
+  if (products?.result?.length === 0) {
+    throw new NotFoundError('No active products found for this genre.');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Products fetched successfully.',
     data: {
       products: products.result,
       totalPages: products.totalPages,

@@ -50,6 +50,24 @@ export const productSchema = Joi.object({
     'string.min': 'Description must be at least 10 characters long',
     'any.required': '{{#label}} cannot be empty',
   }),
+  systemRequirements: Joi.object({
+    cpu: Joi.string().required().messages({
+      'string.empty': 'CPU requirement cannot be empty',
+      'any.required': 'CPU is required',
+    }),
+    gpu: Joi.string().required().messages({
+      'string.empty': 'GPU requirement cannot be empty',
+      'any.required': 'GPU is required',
+    }),
+    ram: Joi.string().required().messages({
+      'string.empty': 'RAM requirement cannot be empty',
+      'any.required': 'RAM is required',
+    }),
+    storage: Joi.string().required().messages({
+      'string.empty': 'Storage requirement cannot be empty',
+      'any.required': 'Storage is required',
+    }),
+  }).required(),
 });
 
 // Edit Product Schema
@@ -111,5 +129,32 @@ export const genreSchema = Joi.object({
   }),
   description: Joi.string().max(250).allow('').messages({
     'string.max': 'Description cannot exceed 250 characters.',
+  }),
+});
+
+// Review schema
+export const reviewSchema = Joi.object({
+  productId: Joi.string().required().messages({
+    'string.base': 'Product ID must be a string',
+    'string.empty': 'Product ID cannot be empty',
+    'any.required': 'Product ID is required',
+  }),
+  userId: Joi.string().required().messages({
+    'string.base': 'User ID must be a string',
+    'string.empty': 'User ID cannot be empty',
+    'any.required': 'User ID is required',
+  }),
+  rating: Joi.number().integer().min(1).max(5).required().messages({
+    'number.base': 'Rating must be a number',
+    'number.integer': 'Rating must be an integer',
+    'number.min': 'Rating cannot be less than 1',
+    'number.max': 'Rating cannot be more than 5',
+    'any.required': 'Rating is required',
+  }),
+  comment: Joi.string().min(10).required().messages({
+    'string.base': 'Comment must be a string',
+    'string.empty': 'Comment cannot be empty',
+    'string.min': 'Comment must be at least 10 characters long',
+    'any.required': 'Comment is required',
   }),
 });

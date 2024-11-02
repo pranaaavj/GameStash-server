@@ -8,6 +8,7 @@ import {
   verifyOtpUser,
   sendOtpUser,
   resetOtpUser,
+  googleSignIn,
 } from '../controllers/auth.controller.js';
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router
   .post('/verify-otp', verifyOtpUser)
   .post('/reset-otp', resetOtpUser)
   .post('/register', registerUser)
+  .post('/google', googleSignIn)
   .post('/reset-pass', resetPassUser)
   .get('/refresh-token', refreshToken);
 

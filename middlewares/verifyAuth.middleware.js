@@ -14,6 +14,9 @@ export const verifyAuth =
     const token = header.split('Bearer ')[1];
 
     const decoded = await verifyToken(token, process.env.ACCESS_TOKEN_SECRET);
+    if (decoded.status === 'blocked') {
+      throw new ForbiddenError('User has been blocked');
+    }
 
     req.user = {
       userId: decoded.userId,

@@ -15,13 +15,17 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
     default: null,
   },
   phoneNumber: {
     type: Number,
     default: null,
-    trim: true,   
+    trim: true,
+  },
+  profilePicture: {
+    type: String,
+    default:
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSUpsDK5dkH7envHCdUECqq0XzCWK1Dv96XcQ&s',
   },
   status: {
     type: String,
@@ -33,9 +37,10 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user',
   },
-  googleId: {
-    type: String,
-    default: null,
+  firebase: {
+    authenticated: { type: Boolean, default: false },
+    provider: { type: String },
+    uid: { type: String },
   },
 });
 

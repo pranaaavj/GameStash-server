@@ -11,7 +11,7 @@ export const createRefreshToken = async (userInfo) => {
 //Creating access token
 export const createAccessToken = async (userInfo) => {
   return jwt.sign(
-    { userId: userInfo._id, role: userInfo.role },
+    { userId: userInfo._id, role: userInfo.role, status: userInfo.status },
     process.env.ACCESS_TOKEN_SECRET,
     { expiresIn: '10s' }
   );
@@ -22,6 +22,7 @@ export const verifyToken = async (token, secret) => {
   try {
     return jwt.verify(token, secret);
   } catch (error) {
+    console.log(error);
     throw new ForbiddenError('Invalid or expired token. Please log in again');
   }
 };

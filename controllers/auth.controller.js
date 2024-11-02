@@ -19,6 +19,7 @@ import {
 } from '../validations/auth.validation.js';
 import Otp from '../models/otp.model.js';
 import User from '../models/user.model.js';
+import { admin } from '../utils/firebaseAdmin.js';
 
 /**
  * @route POST - auth/login
@@ -35,6 +36,10 @@ export const loginUser = async (req, res) => {
     throw new NotFoundError(
       "This email isn't registered. Please register to continue."
     );
+  }
+
+  if (user.status === 'blocked') {
+    throw new ForbiddenError('User has been blocked');
   }
 
   const isPasswordCorrect = await user.comparePassword(password);
@@ -122,6 +127,61 @@ export const registerUser = async (req, res) => {
 };
 
 /**
+ * @route POST - auth/google
+ * @desc  User signin  or signup via google
+ * @access Public
+ */
+export const googleSignIn = async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    throw new BadRequestError('No Token present to verify user.');
+  }
+
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+  if (!decodedToken) {
+    throw new UnauthorizedError('User verification failed.');
+  }
+
+  const { name, picture, email, uid } = decodedToken;
+
+  let user = await User.findOne({ name });
+  if (user) {
+    if (user.status === 'blocked') {
+      throw new ForbiddenError('User has been blocked');
+    }
+  } else {
+    user = await User.create({
+      name,
+      email,
+      profilePicture: picture,
+      firebase: {
+        authenticated: true,
+        provider: 'Google',
+        uid,
+      },
+    });
+  }
+
+  const accessToken = await createAccessToken(user);
+  const refreshToken = await createRefreshToken(user);
+
+  res
+    .status(200)
+    .cookie('jwt', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 1000 * 60 * 60 * 24,
+    })
+    .json({
+      success: true,
+      message: 'You’ve successfully logged in.',
+      data: { user, accessToken },
+    });
+};
+
+/**
  * @route GET - auth/refresh-token
  * @desc  Validating refresh token and generating access token
  * @access Public
@@ -137,9 +197,13 @@ export const refreshToken = async (req, res) => {
     process.env.REFRESH_TOKEN_SECRET
   );
 
-  const user = await User.findById({ _id: decoded?.userId });
+  const user = await User.findById(decoded?.userId);
   if (!user)
     throw new ForbiddenError('Invalid refresh token, You are not authorized.');
+
+  if (user.status === 'blocked') {
+    throw new ForbiddenError('User has been blocked');
+  }
 
   const accessToken = await createAccessToken(user);
 

@@ -34,9 +34,23 @@ const ProductSchema = new mongoose.Schema(
       ref: 'Brand',
       required: true,
     },
+    systemRequirements: {
+      cpu: { type: String, required: true },
+      gpu: { type: String, required: true },
+      ram: { type: String, required: true },
+      storage: { type: String, required: true },
+    },
     stock: {
       type: Number,
       required: true,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
     },
     isActive: {
       type: Boolean,

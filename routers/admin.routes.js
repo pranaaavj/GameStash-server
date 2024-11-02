@@ -20,6 +20,11 @@ import {
   getOneBrand,
   toggleBrandList,
 } from '../controllers/brand.controller.js';
+import {
+  getAllUsers,
+  getOneUser,
+  toggleBlockUser,
+} from '../controllers/admin.controller.js';
 
 const router = express.Router();
 
@@ -32,7 +37,8 @@ router // Products  CRUD
   .post(addProduct) // Adds a new product
   .put(editProduct) // Edits an existing product
   .patch(toggleProductList); // Toggles product listing
-router.get('/products/:productId', getOneProduct); // Getting single product
+router // Getting single product
+  .get('/products/:productId', getOneProduct);
 
 router // Genres CRUD
   .route('/genres')
@@ -40,7 +46,8 @@ router // Genres CRUD
   .post(addGenre) // Adds a new genre
   .put(editGenre) // Edits an existing genre
   .patch(toggleGenreList); // Toggles genre listing
-router.get('/genres/:genreId', getOneGenre); // Getting single genre
+router // Getting single genre
+  .get('/genres/:genreId', getOneGenre);
 
 router // Brands CRUD
   .route('/brands')
@@ -48,6 +55,14 @@ router // Brands CRUD
   .post(addBrand) // Adds a new brand
   .put(editBrand) // Edits an existing brand
   .patch(toggleBrandList); // Toggles brand listing
-router.get('/brands/:brandId', getOneBrand); // Getting single brand
+router // Getting single brand
+  .get('/brands/:brandId', getOneBrand);
+
+router // User Management
+  .route('/users')
+  .get(getAllUsers) // Getting all users
+  .patch(toggleBlockUser); // Getting all users
+router // Getting single user
+  .get('/users/:userId', getOneUser);
 
 export default router;
