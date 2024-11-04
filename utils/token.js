@@ -23,6 +23,6 @@ export const verifyToken = async (token, secret) => {
     return jwt.verify(token, secret);
   } catch (error) {
     console.log(error);
-    throw new ForbiddenError('Invalid or expired token. Please log in again');
+    throw new ForbiddenError('User has been blocked');
   }
 };

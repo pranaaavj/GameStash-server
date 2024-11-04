@@ -54,7 +54,7 @@ export const loginUser = async (req, res) => {
 
   res
     .status(200)
-    .cookie('jwt', refreshToken, {
+    .cookie('userJwt', refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
@@ -73,11 +73,11 @@ export const loginUser = async (req, res) => {
  * @access Public
  */
 export const logoutUser = (req, res) => {
-  const refreshToken = req.cookies?.jwt;
+  const refreshToken = req.cookies?.userJwt;
   if (!refreshToken) throw new BadRequestError('No refresh token found.');
 
   res
-    .clearCookie('jwt', {
+    .clearCookie('userJwt', {
       httpOnly: true,
       sameSite: 'none',
       secure: process.env.NODE_ENV !== 'development',
@@ -187,7 +187,7 @@ export const googleSignIn = async (req, res) => {
  * @access Public
  */
 export const refreshToken = async (req, res) => {
-  const refreshToken = req.cookies?.jwt;
+  const refreshToken = req.cookies?.userJwt;
 
   if (!refreshToken)
     throw new BadRequestError('Refresh token is missing from the request.');

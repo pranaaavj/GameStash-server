@@ -16,7 +16,7 @@ const app = express();
 // Middlewares
 app.use(cors); // Cross origin resource sharing
 app.use(cookieParser()); // For parsing cookies
-app.use(limiter); // Rate limiter
+// app.use(limiter); // Rate limiter
 app.use(helmet()); // Security headers
 app.use(morgan('dev'));
 app.use(express.json());

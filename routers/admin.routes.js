@@ -23,13 +23,18 @@ import {
 import {
   getAllUsers,
   getOneUser,
+  loginAdmin,
+  logoutAdmin,
+  refreshTokenAdmin,
   toggleBlockUser,
 } from '../controllers/admin.controller.js';
 
 const router = express.Router();
 
-// Authorization
-router.post('/login');
+router // Authorization
+  .post('/login', loginAdmin)
+  .post('/logout', logoutAdmin)
+  .get('/refresh-token', refreshTokenAdmin);
 
 router // Products  CRUD
   .route('/products')

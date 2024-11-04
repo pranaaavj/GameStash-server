@@ -1,15 +1,17 @@
-import { NotFoundError, BadRequestError } from '../errors/index.js';
 import {
   productSchema,
   editProductSchema,
 } from '../validations/admin.validations.js';
-import Product from '../models/product.model.js';
 import Brand from '../models/brand.model.js';
 import Genre from '../models/genre.model.js';
-import { aggregatePaginate, paginate } from '../utils/index.js';
+import Product from '../models/product.model.js';
 import { isValidObjectId } from 'mongoose';
+import { aggregatePaginate, paginate } from '../utils/index.js';
+import { NotFoundError, BadRequestError } from '../errors/index.js';
 
+/*****************************************/
 // Admin Side
+/*****************************************/
 
 /**
  * @route GET - admin/products
@@ -214,7 +216,9 @@ export const toggleProductList = async (req, res) => {
   });
 };
 
+/*****************************************/
 // User side
+/*****************************************/
 
 /**
  * @route GET - user/products
