@@ -12,6 +12,10 @@ import {
 import { isValidObjectId } from 'mongoose';
 import { loginSchema } from '../validations/auth.validation.js';
 
+/*****************************************/
+// Admin
+/*****************************************/
+
 /**
  * @route POST - admin/login
  * @desc  Admin login

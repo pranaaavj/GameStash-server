@@ -10,7 +10,7 @@ import { aggregatePaginate, paginate } from '../utils/index.js';
 import { NotFoundError, BadRequestError } from '../errors/index.js';
 
 /*****************************************/
-// Admin Side
+// Products CRUD - Admin
 /*****************************************/
 
 /**
@@ -35,12 +35,12 @@ export const getAllProducts = async (req, res) => {
   const products = await paginate(Product, page, limit, queryOptions);
 
   if (products?.result?.length === 0) {
-    throw new NotFoundError('No products found');
+    throw new NotFoundError('No products found.');
   }
 
   res.status(200).json({
     success: true,
-    message: 'All Products',
+    message: 'All products retrieved successfully.',
     data: {
       products: products.result,
       totalPages: products.totalPages,
@@ -59,17 +59,19 @@ export const getOneProduct = async (req, res) => {
 
   // Validating object Id
   if (!productId || !isValidObjectId(productId)) {
-    throw new BadRequestError('Invalid product ID format.');
+    throw new BadRequestError(
+      'The product ID format seems incorrect. Please check and try again.'
+    );
   }
 
   const product = await Product.findById(productId).populate('genre brand');
   if (!product) {
-    throw new NotFoundError('No Product found.');
+    throw new NotFoundError('We couldn’t find the specified product.');
   }
 
   res.status(200).json({
     success: true,
-    message: 'Product fetched successfully.',
+    message: 'Product retrieved successfully.',
     data: product,
   });
 };
@@ -97,13 +99,13 @@ export const addProduct = async (req, res) => {
   // Checking for brand
   const brandExist = await Brand.findOne({ name: brand });
   if (!brandExist) {
-    throw new NotFoundError('This Brand is not available.');
+    throw new NotFoundError('The specified brand is not available.');
   }
 
   // Checking for genre
   const genreExist = await Genre.findOne({ name: genre });
   if (!genreExist) {
-    throw new NotFoundError('This Genre is not available.');
+    throw new NotFoundError('The specified genre is not available.');
   }
 
   await Product.create({
@@ -120,7 +122,7 @@ export const addProduct = async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: 'Product added successfully',
+    message: 'Product added successfully.',
     data: null,
   });
 };
@@ -132,10 +134,12 @@ export const addProduct = async (req, res) => {
  */
 export const editProduct = async (req, res) => {
   const { productId } = req.body;
-  console.log(req.body);
+
   // Validating object Id
   if (!productId || !isValidObjectId(productId.trim())) {
-    throw new BadRequestError('Invalid product ID format.');
+    throw new BadRequestError(
+      'The product ID format seems incorrect. Please check and try again.'
+    );
   }
 
   const updatedProduct = await editProductSchema.validateAsync(req.body, {
@@ -145,16 +149,15 @@ export const editProduct = async (req, res) => {
   // Checking for the product
   const oldProduct = await Product.findById({ _id: productId });
   if (!oldProduct) {
-    throw new NotFoundError('No Product found.');
+    throw new NotFoundError('We couldn’t find the specified product.');
   }
 
   if (updatedProduct.brand) {
     // Checking for brand if brand is updated
     const brandExist = await Brand.findOne({ name: updatedProduct.brand });
     if (!brandExist) {
-      throw new NotFoundError('This Brand is not available.');
+      throw new NotFoundError('The specified brand is not available.');
     }
-
     oldProduct.brand = brandExist._id;
   }
 
@@ -162,9 +165,8 @@ export const editProduct = async (req, res) => {
     // Checking for genre if genre is updated
     const genreExist = await Genre.findOne({ name: updatedProduct.genre });
     if (!genreExist) {
-      throw new NotFoundError('This Genre is not available.');
+      throw new NotFoundError('The specified genre is not available.');
     }
-
     oldProduct.genre = genreExist._id;
   }
 
@@ -186,7 +188,7 @@ export const editProduct = async (req, res) => {
 
 /**
  * @route PATCH - admin/products
- * @desc  Admin -  Toggling product listing
+ * @desc  Admin - Toggling product listing
  * @access Private
  */
 export const toggleProductList = async (req, res) => {
@@ -194,13 +196,15 @@ export const toggleProductList = async (req, res) => {
 
   // Validating Object Id
   if (!productId || !isValidObjectId(productId)) {
-    throw new BadRequestError('Invalid product ID format.');
+    throw new BadRequestError(
+      'The product ID format seems incorrect. Please check and try again.'
+    );
   }
 
   // Checking for product
   const product = await Product.findById({ _id: productId });
   if (!product) {
-    throw new NotFoundError('No Product found');
+    throw new NotFoundError('We couldn’t find the specified product.');
   }
 
   // Toggling the product status
@@ -210,14 +214,14 @@ export const toggleProductList = async (req, res) => {
   res.status(204).json({
     success: true,
     message: `Product ${
-      product.isActive ? 'Listed' : 'UnListed'
+      product.isActive ? 'listed' : 'unlisted'
     } successfully.`,
     data: product,
   });
 };
 
 /*****************************************/
-// User side
+// Products listing - User Side
 /*****************************************/
 
 /**
@@ -254,12 +258,12 @@ export const getProducts = async (req, res) => {
   const products = await aggregatePaginate(Product, page, limit, queryOptions);
 
   if (products?.result?.length === 0) {
-    throw new NotFoundError('No products found');
+    throw new NotFoundError('No active products found.');
   }
 
   res.status(200).json({
     success: true,
-    message: 'User products',
+    message: 'Available products retrieved successfully.',
     data: {
       products: products.result,
       totalPages: products.totalPages,
@@ -278,24 +282,26 @@ export const getProduct = async (req, res) => {
 
   // Validating object Id
   if (!productId || !isValidObjectId(productId)) {
-    throw new BadRequestError('Invalid product ID format.');
+    throw new BadRequestError(
+      'The product ID format seems incorrect. Please check and try again.'
+    );
   }
 
   const product = await Product.findById(productId).populate('genre brand');
   if (!product) {
-    throw new NotFoundError('No Product found.');
+    throw new NotFoundError('We couldn’t find the specified product.');
   }
-  console.log(product);
+
   res.status(200).json({
     success: true,
-    message: 'Product fetched successfully.',
+    message: 'Product details retrieved successfully.',
     data: product,
   });
 };
 
 /**
  * @route GET - /products/:genre
- * @desc  User - Getting one product by the genre
+ * @desc  User - Getting products by genre
  * @access Public
  */
 export const getProductsByGenre = async (req, res) => {
@@ -304,14 +310,15 @@ export const getProductsByGenre = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
 
   if (!genreName) {
-    throw new BadRequestError('Genre must be provided');
+    throw new BadRequestError('Genre must be specified.');
   }
 
   const genre = await Genre.findOne({ name: genreName });
   if (!genre) {
-    throw new NotFoundError('Genre not found.');
+    throw new NotFoundError('We couldn’t find the specified genre.');
   }
 
+  // Custom query options
   const queryOptions = {
     filter: { genre: genre._id, isActive: true },
     populate: [
@@ -329,7 +336,7 @@ export const getProductsByGenre = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Products fetched successfully.',
+    message: 'Products by genre retrieved successfully.',
     data: {
       products: products.result,
       totalPages: products.totalPages,

@@ -4,6 +4,10 @@ import Brand from '../models/brand.model.js';
 import { brandSchema } from '../validations/admin.validations.js';
 import { isValidObjectId } from 'mongoose';
 
+/*****************************************/
+// Brands CRUD
+/*****************************************/
+
 /**
  * @route GET - admin/brands
  * @desc  Admin - Listing all brands

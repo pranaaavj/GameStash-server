@@ -5,7 +5,7 @@ export const verifyAuth =
   (requiredRole = ['user']) =>
   async (req, res, next) => {
     const header = req.headers?.authorization || req.headers?.Authorization;
-    console.log(req.headers);
+
     if (!header || !header.startsWith('Bearer '))
       throw new UnauthorizedError(
         'Authorization token is missing. Access Denied'
@@ -19,7 +19,7 @@ export const verifyAuth =
     }
 
     req.user = {
-      userId: decoded.userId,
+      id: decoded.userId,
       role: decoded.role,
     };
 

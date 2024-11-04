@@ -4,6 +4,10 @@ import { genreSchema } from '../validations/admin.validations.js';
 import { isValidObjectId } from 'mongoose';
 import { NotFoundError, BadRequestError } from '../errors/index.js';
 
+/*****************************************/
+// Genre CRUD
+/*****************************************/
+
 /**
  * @route GET - admin/genres
  * @desc  Admin - Listing all genres

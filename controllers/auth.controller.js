@@ -21,6 +21,10 @@ import Otp from '../models/otp.model.js';
 import User from '../models/user.model.js';
 import { admin } from '../utils/firebaseAdmin.js';
 
+/*****************************************/
+// Authorization
+/*****************************************/
+
 /**
  * @route POST - auth/login
  * @desc  User login

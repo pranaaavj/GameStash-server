@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.use('/auth', authRouter);
 router.use('/admin', adminRouter);
-router.use('/user', userRouter);
+router.use('/user', verifyAuth(['user', 'admin']), userRouter);
 
 export default router;

@@ -7,6 +7,10 @@ import {
 import User from '../models/user.model.js';
 import { userProfileSchema } from '../validations/user.validations.js';
 
+/*****************************************/
+// User
+/*****************************************/
+
 /**
  * @route GET - user/details/:userId
  * @desc  Get user details for user profile
@@ -17,17 +21,21 @@ export const getUserDetails = async (req, res) => {
 
   // Validate object ID
   if (!userId || !isValidObjectId(userId)) {
-    throw new BadRequestError('Invalid user ID format.');
+    throw new BadRequestError(
+      'It seems the user ID format is incorrect. Please check and try again.'
+    );
   }
 
   const user = await User.findById(userId);
   if (!user) {
-    throw new NotFoundError('No User found.');
+    throw new NotFoundError(
+      'We couldn’t find an account associated with this ID.'
+    );
   }
 
   res.status(200).json({
     success: true,
-    message: 'Fetched user details successfully',
+    message: 'User details retrieved successfully.',
     data: user,
   });
 };
@@ -47,7 +55,7 @@ export const editUserDetails = async (req, res) => {
   // Validate object ID
   if (!userId || !isValidObjectId(userId)) {
     throw new BadRequestError(
-      'It seems the user ID format is incorrect. Please try again.'
+      'It seems the user ID format is incorrect. Please check and try again.'
     );
   }
 
@@ -67,7 +75,7 @@ export const editUserDetails = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `You're profile has been updated successfully.`,
+    message: 'Your profile has been updated successfully.',
     data: user,
   });
 };
@@ -84,7 +92,7 @@ export const changePassUser = async (req, res) => {
   // Validate object ID
   if (!userId || !isValidObjectId(userId)) {
     throw new BadRequestError(
-      'It seems the user ID format is incorrect. Please try again.'
+      'It seems the user ID format is incorrect. Please check and try again.'
     );
   }
 
