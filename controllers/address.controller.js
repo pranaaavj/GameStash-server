@@ -13,9 +13,11 @@ import { NotFoundError, BadRequestError } from '../errors/index.js';
  * @access Private
  */
 export const getAllAddresses = async (req, res) => {
-  const addresses = await Address.find()
-    .populate('user', 'name -_id')
-    .sort({ updatedAt: -1 });
+  const userId = req?.user?.id;
+
+  const addresses = await Address.find({ user: userId }).sort({
+    updatedAt: -1,
+  });
 
   if (addresses.length === 0) {
     throw new NotFoundError('No addresses found.');
@@ -43,10 +45,8 @@ export const getOneAddress = async (req, res) => {
     );
   }
 
-  const address = await Address.findById(addressId).populate(
-    'user',
-    'name -_id'
-  );
+  const address = await Address.findById(addressId);
+
   if (!address) {
     throw new NotFoundError('We couldn’t find the specified address.');
   }
@@ -101,7 +101,7 @@ export const addAddress = async (req, res) => {
  */
 export const editAddress = async (req, res) => {
   const addressId = req.params.addressId.trim();
-
+  console.log(req.body);
   // Validating object Id
   if (!addressId || !isValidObjectId(addressId)) {
     throw new BadRequestError(

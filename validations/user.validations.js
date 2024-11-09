@@ -44,4 +44,4 @@ export const addressSchema = Joi.object({
     'string.empty': 'Country is required.',
     'any.required': 'Country is required.',
   }),
-});
+}).unknown(true);

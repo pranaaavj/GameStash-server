@@ -40,4 +40,15 @@ const AddressSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+AddressSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,
+  transform: function (doc, ret) {
+    delete ret._id;
+    delete ret.password;
+    delete ret.createdAt;
+    delete ret.updatedAt;
+  },
+});
+
 export default mongoose.model('Address', AddressSchema);
