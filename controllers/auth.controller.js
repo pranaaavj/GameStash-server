@@ -105,7 +105,6 @@ export const registerUser = async (req, res) => {
     });
 
   // User exist is validated in the mongoose validation
-
   const userOtp = await Otp.findOne({ email });
   if (!userOtp?.otpVerified) {
     throw new UnauthorizedError('Please verify your email first.');
@@ -172,7 +171,7 @@ export const googleSignIn = async (req, res) => {
 
   res
     .status(200)
-    .cookie('jwt', refreshToken, {
+    .cookie('userJwt', refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',

@@ -1,5 +1,4 @@
 const errorHandler = (err, req, res, next) => {
-  console.log(err);
   const customError = {
     statusCode: err.statusCode || 500,
     message: err.message || 'Something went wrong, Please try again',

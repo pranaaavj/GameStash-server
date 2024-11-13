@@ -28,6 +28,7 @@ import {
   refreshTokenAdmin,
   toggleBlockUser,
 } from '../controllers/admin.controller.js';
+import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 
 const router = express.Router();
 
@@ -35,6 +36,8 @@ router // Authorization
   .post('/login', loginAdmin)
   .post('/logout', logoutAdmin)
   .get('/refresh-token', refreshTokenAdmin);
+
+router.use(verifyAuth(['admin'])); // These routes need authorization
 
 router // Products  CRUD
   .route('/products')

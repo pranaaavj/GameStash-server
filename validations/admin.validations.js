@@ -101,6 +101,12 @@ export const editProductSchema = Joi.object({
   brand: Joi.string(),
   stock: Joi.number().integer().min(0),
   description: Joi.string(),
+  systemRequirements: Joi.object({
+    cpu: Joi.string().label('CPU'),
+    gpu: Joi.string().label('GPU'),
+    ram: Joi.string().label('RAM'),
+    storage: Joi.string().label('Storage'),
+  }).label('System Requirements'),
 });
 
 // Add Brand schema

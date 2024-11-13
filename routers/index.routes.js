@@ -7,7 +7,7 @@ import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 const router = express.Router();
 
 router.use('/auth', authRouter);
-router.use('/admin', verifyAuth(['admin']), adminRouter);
+router.use('/admin', adminRouter);
 router.use('/user', userRouter);
 
 export default router;

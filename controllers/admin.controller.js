@@ -83,7 +83,7 @@ export const logoutAdmin = (req, res) => {
 };
 
 /**
- * @route GET - auth/refresh-token
+ * @route GET - admin/refresh-token
  * @desc  Validating refresh token and generating access token
  * @access Public
  */
@@ -97,7 +97,7 @@ export const refreshTokenAdmin = async (req, res) => {
     refreshToken,
     process.env.REFRESH_TOKEN_SECRET
   );
-  console.log(process.env.REFRESH_TOKEN_SECRET);
+
   const user = await User.findById(decoded?.userId);
   if (!user)
     throw new ForbiddenError('Invalid refresh token, You are not authorized.');

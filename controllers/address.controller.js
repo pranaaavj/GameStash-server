@@ -64,10 +64,17 @@ export const getOneAddress = async (req, res) => {
  * @access Private
  */
 export const addAddress = async (req, res) => {
-  const { addressName, addressLine, city, state, zip, country } =
-    await addressSchema.validateAsync(req.body, {
-      abortEarly: false,
-    });
+  const {
+    addressName,
+    addressLine,
+    city,
+    state,
+    zip,
+    country,
+    isDefault = false,
+  } = await addressSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
 
   const userId = req?.user?.id;
 
@@ -75,6 +82,13 @@ export const addAddress = async (req, res) => {
     throw new BadRequestError(
       'It seems the user ID format is incorrect. Please check and try again.'
     );
+  }
+
+  const existingAddresses = await Address.find({ user: userId });
+
+  // If isDefault is true, set all other addresses to not default
+  if (isDefault) {
+    await Address.updateMany({ user: userId }, { isDefault: false });
   }
 
   const newAddress = await Address.create({
@@ -85,6 +99,7 @@ export const addAddress = async (req, res) => {
     state,
     zip,
     country,
+    isDefault: isDefault || existingAddresses?.length === 0,
   });
 
   res.status(201).json({
@@ -95,13 +110,13 @@ export const addAddress = async (req, res) => {
 };
 
 /**
- * @route PUT - user/address/:addressId
+ * @route PATCH - user/address/:addressId
  * @desc  User - Editing an address
  * @access Private
  */
 export const editAddress = async (req, res) => {
   const addressId = req.params.addressId.trim();
-  console.log(req.body);
+  console.log(addressId);
   // Validating object Id
   if (!addressId || !isValidObjectId(addressId)) {
     throw new BadRequestError(
@@ -112,11 +127,18 @@ export const editAddress = async (req, res) => {
   const updatedData = await addressSchema.validateAsync(req.body, {
     abortEarly: false,
   });
-
+  console.log(updatedData);
   // Checking for the address
   const address = await Address.findById(addressId);
   if (!address) {
     throw new NotFoundError('We couldn’t find the specified address.');
+  }
+
+  if (updatedData.isDefault) {
+    await Address.updateMany(
+      { user: req.user.id, _id: { $ne: addressId } },
+      { isDefault: false }
+    );
   }
 
   // Updating the address
@@ -158,5 +180,43 @@ export const deleteAddress = async (req, res) => {
     success: true,
     message: 'Address deleted successfully.',
     data: null,
+  });
+};
+
+/**
+ * @route Patch - user/address/:addressId
+ * @desc  User - Updating a default address
+ * @access Private
+ */
+export const updateDefaultAddress = async (req, res) => {
+  const addressId = req.params.addressId.trim();
+  const userId = req?.user?.id;
+
+  // Validate address ID format
+  if (!addressId || !isValidObjectId(addressId)) {
+    throw new BadRequestError(
+      'The address ID format seems incorrect. Please check and try again.'
+    );
+  }
+
+  // Setting all other address to not default
+  await Address.updateMany({ user: userId }, { isDefault: false });
+
+  // Setting the requested address to default
+  const address = await Address.findByIdAndUpdate(
+    addressId,
+    { isDefault: true },
+    { new: true }
+  );
+
+  // Check if address exists
+  if (!address) {
+    throw new NotFoundError('We couldn’t find the specified address.');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Default address updated successfully.',
+    data: address,
   });
 };

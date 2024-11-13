@@ -19,6 +19,7 @@ import {
   editAddress,
   getAllAddresses,
   getOneAddress,
+  updateDefaultAddress,
 } from '../controllers/address.controller.js';
 import {
   getCart,
@@ -33,10 +34,10 @@ const router = express.Router();
 
 router // User home products
   .get('/products', getProducts) // Get all products
-  .get('/products/:genre', getProductsByGenre) // Get products by genre
   .get('/product/:productId', getProduct) // Get single product by ID
-  .get('/review/:productId', getReviewsByProduct) // Get reviews by product by ID
-  .post('/review', addReview); // Add a review
+  .get('/products/:genre', getProductsByGenre) // Get products by genre
+  .post('/review', addReview) // Add a review
+  .get('/review/:productId', getReviewsByProduct); // Get reviews by product by ID
 
 router.use(verifyAuth(['user', 'admin'])); // These routes need authentication
 
@@ -47,8 +48,8 @@ router // Profile management
 
 router // Address management
   .route('/address')
-  .get(getAllAddresses) // List all addresses of user
-  .post(addAddress); // Add a new address
+  .post(addAddress) // Add a new address
+  .get(getAllAddresses); // List all addresses of user
 router
   .route('/address/:addressId')
   .get(getOneAddress) // Get one address by ID
@@ -58,9 +59,9 @@ router
 router // Cart management
   .route('/cart')
   .get(getCart) // Get the cart for a specific user
+  .delete(clearCart) // Clear the entire cart
   .post(addItemToCart) // Add an item to the cart
-  .patch(updateCartItem) // Update the quantity of a specific item
-  .delete(clearCart); // Clear the entire cart
+  .patch(updateCartItem); // Update the quantity of a specific item
 router // Remove an item from the cart
   .delete('/cart/:productId', removeItemFromCart);
 

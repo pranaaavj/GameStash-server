@@ -179,7 +179,7 @@ export const editProduct = async (req, res) => {
 
   await oldProduct.save();
 
-  res.status(204).json({
+  res.status(200).json({
     success: true,
     message: 'Product updated successfully.',
     data: oldProduct,
