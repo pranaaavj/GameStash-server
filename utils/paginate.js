@@ -3,13 +3,17 @@ export const paginate = async (model, page, limit, queryOptions = {}) => {
 
   const { filter = {}, sort = {}, select = '', populate = [] } = queryOptions;
 
-  const total = await model.countDocuments();
-
+  const total = await model.countDocuments(filter);
   let query = model.find(filter).lean().skip(skip).limit(limit);
 
-  if (sort) query = query.sort(sort);
+  if (Object.keys(sort).length) query = query.sort(sort);
   if (select) query = query.select(select);
-  if (populate.length) populate.forEach((pop) => query.populate(pop));
+
+  if (populate.length) {
+    for (const pop of populate) {
+      query = query.populate(pop);
+    }
+  }
 
   const result = await query.exec();
 

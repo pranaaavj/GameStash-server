@@ -29,6 +29,10 @@ import {
   toggleBlockUser,
 } from '../controllers/admin.controller.js';
 import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
+import {
+  getAllOrders,
+  updateOrderStatus,
+} from '../controllers/order.controller.js';
 
 const router = express.Router();
 
@@ -72,5 +76,8 @@ router // User Management
   .patch(toggleBlockUser); // Getting all users
 router // Getting single user
   .get('/users/:userId', getOneUser);
+
+router.route('/order').get(getAllOrders);
+router.patch('/order/:orderId', updateOrderStatus);
 
 export default router;

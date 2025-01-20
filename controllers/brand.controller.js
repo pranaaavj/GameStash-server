@@ -5,7 +5,7 @@ import { brandSchema } from '../validations/admin.validations.js';
 import { isValidObjectId } from 'mongoose';
 
 /*****************************************/
-// Brands CRUD
+// Admin - Brands CRUD
 /*****************************************/
 
 /**
@@ -141,5 +141,42 @@ export const toggleBrandList = async (req, res) => {
     success: true,
     message: `Brand ${brand.isActive ? 'Listed' : 'Unlisted'} successfully.`,
     data: brand,
+  });
+};
+
+/*****************************************/
+// User - Brands
+/*****************************************/
+
+/**
+ * @route GET - user/brands
+ * @desc  User - Listing all brands
+ * @access Public
+ */
+export const getBrandsUser = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  // Custom query options
+  const queryOptions = {
+    filter: { isActive: true },
+    sort: { updatedAt: -1 },
+    select: '_id name',
+  };
+
+  const brands = await paginate(Brand, page, limit, queryOptions);
+
+  if (brands?.result?.length === 0) {
+    throw new NotFoundError('No brands found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'All Brands',
+    data: {
+      brands: brands.result,
+      totalPages: brands.totalPages,
+      currentPage: brands.currentPage,
+    },
   });
 };

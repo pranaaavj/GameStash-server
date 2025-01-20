@@ -56,8 +56,26 @@ const ProductSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-  },
+  }, 
   { timestamps: true }
 );
+
+// Text index for name and description with adjusted weights
+ProductSchema.index(
+  { name: 'text', description: 'text' },
+  { weights: { name: 2, description: 1 } }
+);
+
+// Single-field indexes for basic sorting and filtering
+ProductSchema.index({ price: 1 });
+ProductSchema.index({ averageRating: 1 });
+ProductSchema.index({ isActive: 1 });
+ProductSchema.index({ createdAt: -1 }); // For "new arrivals"
+
+// Compound indexes for filtering combinations
+ProductSchema.index({ price: 1, isActive: 1 }); // Sorting/filtering active products by price
+ProductSchema.index({ averageRating: -1, isActive: 1 }); // Sorting/filtering active products by ratings
+ProductSchema.index({ genre: 1, isActive: 1 }); // Filtering active products by genre
+ProductSchema.index({ brand: 1, isActive: 1 });
 
 export default mongoose.model('Product', ProductSchema);

@@ -1,8 +1,11 @@
-const errorHandler = (err, req, res, next) => {
+const errorHandler = async (err, req, res, next) => {
+  console.log('Error: ', err);
+
   const customError = {
     statusCode: err.statusCode || 500,
     message: err.message || 'Something went wrong, Please try again',
   };
+
   if (err.isJoi) {
     customError.statusCode = 400;
     customError.message = err?.details
@@ -10,25 +13,29 @@ const errorHandler = (err, req, res, next) => {
       .join(', ')
       .replace(/['"]+/g, '');
   }
+
   // Handling mongoose duplicate value errors
   else if (err.code || err.code === 11000) {
     customError.statusCode = 409;
     customError.message = `This ${Object.keys(
-      err?.keyValue
+      err?.keyValue || {}
     )} already exists, Please log in or enter another ${Object.keys(
-      err?.keyValue
+      err?.keyValue || {}
     )}.`;
   }
+
   // Handling mongoose validation error
   else if (err.name === 'ValidationError') {
     customError.statusCode = 400;
     customError.message = Object.values(err?.errors).map((err) => err?.message);
   }
+
   // Handling JWT validation
   else if (err.name === 'JsonWebTokenError') {
     customError.statusCode = 401;
     customError.message = `Invalid Token, Please login again`;
   }
+
   // Handling Token Expiration
   else if (err.name === 'TokenExpiredError') {
     customError.statusCode = 401;

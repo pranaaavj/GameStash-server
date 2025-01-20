@@ -6,10 +6,8 @@ import morgan from 'morgan';
 import router from './routers/index.routes.js';
 import express from 'express';
 import connectDB from './config/database.js';
-import { limiter } from './utils/index.js';
 import cookieParser from 'cookie-parser';
 import errorHandler from './middlewares/error.middleware.js';
-import { verifyAuth } from './middlewares/verifyAuth.middleware.js';
 
 const app = express();
 
@@ -24,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api', router);
-app.get('/test', verifyAuth(), (req, res) => res.send('hello'));
+
 // Global Error handler
 app.use(errorHandler);
 

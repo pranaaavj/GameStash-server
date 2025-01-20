@@ -22,7 +22,7 @@ export const verifyAuth =
       id: decoded.userId,
       role: decoded.role,
     };
-    console.log(req.user);
+
     if (requiredRole.length && !requiredRole.includes(req?.user?.role)) {
       throw new ForbiddenError("You're not authorized, Access denied");
     }

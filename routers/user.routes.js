@@ -3,6 +3,7 @@ import {
   getProduct,
   getProducts,
   getProductsByGenre,
+  searchProducts,
 } from '../controllers/product.controller.js';
 import {
   addReview,
@@ -19,7 +20,6 @@ import {
   editAddress,
   getAllAddresses,
   getOneAddress,
-  updateDefaultAddress,
 } from '../controllers/address.controller.js';
 import {
   getCart,
@@ -29,13 +29,23 @@ import {
   clearCart,
 } from '../controllers/cart.controller.js';
 import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
+import {
+  cancelOrder,
+  getUserOrders,
+  placeOrder,
+} from '../controllers/order.controller.js';
+import { getBrandsUser } from '../controllers/brand.controller.js';
+import { getGenresUser } from '../controllers/genre.controller.js';
 
 const router = express.Router();
 
 router // User home products
   .get('/products', getProducts) // Get all products
+  .get('/products/search', searchProducts) // Search products
   .get('/product/:productId', getProduct) // Get single product by ID
   .get('/products/:genre', getProductsByGenre) // Get products by genre
+  .get('/brands', getBrandsUser) // Get all brands
+  .get('/genres', getGenresUser) // Get all genres
   .post('/review', addReview) // Add a review
   .get('/review/:productId', getReviewsByProduct); // Get reviews by product by ID
 
@@ -64,5 +74,11 @@ router // Cart management
   .patch(updateCartItem); // Update the quantity of a specific item
 router // Remove an item from the cart
   .delete('/cart/:productId', removeItemFromCart);
+
+router // Order functionality
+  .route('/order')
+  .post(placeOrder) // Place an order
+  .get(getUserOrders); // Get all orders of a user
+router.patch('/order/:orderId', cancelOrder); // Cancel a order
 
 export default router;

@@ -2,10 +2,14 @@ import Genre from '../models/genre.model.js';
 import { paginate } from '../utils/index.js';
 import { genreSchema } from '../validations/admin.validations.js';
 import { isValidObjectId } from 'mongoose';
-import { NotFoundError, BadRequestError } from '../errors/index.js';
+import {
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+} from '../errors/index.js';
 
 /*****************************************/
-// Genre CRUD
+// Admin - Genre CRUD
 /*****************************************/
 
 /**
@@ -103,6 +107,11 @@ export const editGenre = async (req, res) => {
     throw new NotFoundError('No Genre found.');
   }
 
+  const genreExist = await Genre.find({ name });
+  if (genreExist.length > 0 && !genreExist._id.equals(genreId)) {
+    throw new ConflictError('Genre already exist');
+  }
+
   genre.name = name || genre.name;
   genre.description = description || genre.description;
 
@@ -139,5 +148,41 @@ export const toggleGenreList = async (req, res) => {
     success: true,
     message: `Genre ${genre.isActive ? 'Listed' : 'Unlisted'} successfully.`,
     data: genre,
+  });
+};
+
+/*****************************************/
+// User - Genres
+/*****************************************/
+
+/**
+ * @route GET - user/genres
+ * @desc  User - Get all brands
+ * @access Private
+ */
+export const getGenresUser = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  const queryOptions = {
+    filter: { isActive: true },
+    sort: { updatedAt: -1 },
+    select: '_id name',
+  };
+
+  const genres = await paginate(Genre, page, limit, queryOptions);
+
+  if (genres?.result?.length === 0) {
+    throw new NotFoundError('No genres found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'All Genres',
+    data: {
+      genres: genres.result,
+      totalPages: genres.totalPages,
+      currentPage: genres.currentPage,
+    },
   });
 };

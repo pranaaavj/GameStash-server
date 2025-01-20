@@ -5,12 +5,7 @@ export const aggregatePaginate = async (
   aggregateOptions = {}
 ) => {
   const skip = (page - 1) * limit;
-  const {
-    filter = {},
-    sort = {},
-    select = '',
-    populate = [],
-  } = aggregateOptions;
+  const { filter = {}, sort = {}, populate = [] } = aggregateOptions;
 
   const pipeline = [{ $match: filter }];
 
@@ -21,40 +16,47 @@ export const aggregatePaginate = async (
       );
     }
 
-    const lookupStage = {
+    pipeline.push({
       $lookup: {
         from: pop.from,
         localField: pop.localField,
         foreignField: pop.foreignField || '_id',
         as: pop.as,
+        pipeline: [
+          ...(pop.match ? [{ $match: pop.match }] : []),
+          ...(pop.select ? [{ $project: pop.select }] : []),
+        ],
       },
-    };
+    });
 
-    pipeline.push(lookupStage);
-
-    if (pop.single) pipeline.push({ $unwind: `$${pop.as}` });
-    if (pop.match)
-      pipeline.push({ $match: { [`${pop.as}.isActive`]: true, ...pop.match } });
+    if (pop.single)
+      pipeline.push({
+        $unwind: { path: `$${pop.as}`, preserveNullAndEmptyArrays: true },
+      });
   });
 
   if (Object.keys(sort).length) pipeline.push({ $sort: sort });
 
-  if (select) {
-    const selectFields = select.split(' ').reduce((acc, field) => {
-      acc[field] = 1;
-      return acc;
-    }, {});
-    pipeline.push({ $project: selectFields });
-  }
+  pipeline.push(
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limit }],
+        total: [{ $count: 'count' }],
+      },
+    },
+    {
+      $project: {
+        data: 1,
+        total: { $arrayElemAt: ['$total.count', 0] },
+      },
+    }
+  );
 
-  pipeline.push({ $skip: skip }, { $limit: limit });
-
-  const result = await model.aggregate(pipeline).exec();
-  const total = await model.countDocuments(filter);
+  const [result] = await model.aggregate(pipeline).exec();
 
   return {
-    result,
-    totalPages: Math.ceil(total / limit),
+    result: result.data,
+    totalPages: Math.ceil((result.total || 0) / limit),
     currentPage: page,
   };
 };
