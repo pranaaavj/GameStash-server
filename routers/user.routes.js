@@ -32,7 +32,10 @@ import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 import {
   cancelOrder,
   getUserOrders,
+  requestReturnOrder,
   placeOrder,
+  getUserOrder,
+  verifyRazorpay,
 } from '../controllers/order.controller.js';
 import { getBrandsUser } from '../controllers/brand.controller.js';
 import { getGenresUser } from '../controllers/genre.controller.js';
@@ -79,6 +82,11 @@ router // Order functionality
   .route('/order')
   .post(placeOrder) // Place an order
   .get(getUserOrders); // Get all orders of a user
-router.patch('/order/:orderId', cancelOrder); // Cancel a order
+router
+  .route('/order/:orderId')
+  .get(getUserOrder) // Get a specific order by ID
+  .patch(requestReturnOrder) // Request an order return
+  .put(cancelOrder); // Cancel a order
+router.post('/order/razorpay', verifyRazorpay);
 
 export default router;

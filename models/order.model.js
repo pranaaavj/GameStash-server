@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { AddressSchema } from './address.model.js';
 
 const orderItemSchema = new mongoose.Schema({
   product: {
@@ -25,7 +26,15 @@ const orderItemSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Shipped', 'Delivered', 'Cancelled', 'Returned'],
+    enum: [
+      'Pending',
+      'Shipped',
+      'Delivered',
+      'Cancelled',
+      'Returned',
+      'Return Requested',
+      'Return Rejected',
+    ],
     default: 'Pending',
   },
   returnRequest: {
@@ -75,14 +84,10 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    shippingAddress: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Address',
-      required: true,
-    },
+    shippingAddress: AddressSchema,
     paymentMethod: {
       type: String,
-      enum: ['Wallet', 'UPI', 'Cash on Delivery', 'Credit Card'],
+      enum: ['Wallet', 'Cash on Delivery', 'Credit Card', 'Razorpay'],
       required: true,
     },
     paymentStatus: {
@@ -92,7 +97,15 @@ const OrderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      enum: ['Processing', 'Shipped', 'Delivered', 'Cancelled'],
+      enum: [
+        'Processing',
+        'Shipped',
+        'Delivered',
+        'Cancelled',
+        'Returned',
+        'Return Requested',
+        'Partially Cancelled',
+      ],
       default: 'Processing',
     },
     placedAt: {
@@ -110,12 +123,36 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// OrderSchema.pre('save', function (next) {
+//   if (!this.deliveryBy && this.orderStatus === 'Shipped') {
+//     const deliveryDate = new Date();
+//     deliveryDate.setDate(deliveryDate.getDate() + 5); // Set delivery date to 5 days after shipping
+//     this.deliveryBy = deliveryDate;
+//   }
+//   next();
+// });
+
 OrderSchema.pre('save', function (next) {
-  if (!this.deliveryBy && this.orderStatus === 'Shipped') {
-    const deliveryDate = new Date();
-    deliveryDate.setDate(deliveryDate.getDate() + 5); // Set delivery date to 5 days after shipping
-    this.deliveryBy = deliveryDate;
+  const statuses = this.orderItems.map((item) => item.status);
+
+  if (statuses.every((status) => status === 'Cancelled')) {
+    this.orderStatus = 'Cancelled';
+  } else if (statuses.every((status) => status === 'Returned')) {
+    this.orderStatus = 'Returned';
+  } else if (statuses.includes('Return Requested')) {
+    this.orderStatus = 'Return Requested';
+  } else if (statuses.includes('Pending') || statuses.includes('Shipped')) {
+    this.orderStatus = 'Processing';
+  } else if (statuses.includes('Cancelled') && statuses.includes('Delivered')) {
+    this.orderStatus = 'Partially Cancelled';
+  } else if (statuses.includes('Returned') && statuses.includes('Shipped')) {
+    this.orderStatus = 'Partially Returned';
+  } else if (statuses.every((status) => status === 'Delivered')) {
+    this.orderStatus = 'Delivered';
+  } else {
+    this.orderStatus = 'Processing';
   }
+
   next();
 });
 

@@ -32,6 +32,7 @@ import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 import {
   getAllOrders,
   updateOrderStatus,
+  requestReturnAdmin,
 } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -77,7 +78,10 @@ router // User Management
 router // Getting single user
   .get('/users/:userId', getOneUser);
 
-router.route('/order').get(getAllOrders);
-router.patch('/order/:orderId', updateOrderStatus);
+router.route('/order').get(getAllOrders); // Getting all orders
+router
+  .route('/order/:orderId')
+  .patch(updateOrderStatus) // Update order status
+  .put(requestReturnAdmin); // Request return
 
 export default router;

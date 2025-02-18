@@ -92,6 +92,16 @@ export const updateCartItem = async (req, res) => {
     throw new NotFoundError('Item not found in cart');
   }
 
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new NotFoundError('Product not found');
+  }
+
+  console.log(quantity);
+  if (product.stock < quantity) {
+    throw new BadRequestError('Insufficient stock');
+  }
+
   item.quantity = quantity;
   await cart.save();
 
