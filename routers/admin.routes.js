@@ -34,6 +34,13 @@ import {
   updateOrderStatus,
   requestReturnAdmin,
 } from '../controllers/order.controller.js';
+import {
+  addOffer,
+  toggleOfferList,
+  editOffer,
+  getAllOffers,
+  getOneOffer,
+} from '../controllers/offer.controller.js';
 
 const router = express.Router();
 
@@ -44,44 +51,52 @@ router // Authorization
 
 router.use(verifyAuth(['admin'])); // These routes need authorization
 
-router // Products  CRUD
+router // Products
   .route('/products')
-  .get(getAllProducts) // Getting all products
-  .post(addProduct) // Adds a new product
-  .put(editProduct) // Edits an existing product
-  .patch(toggleProductList); // Toggles product listing
-router // Getting single product
-  .get('/products/:productId', getOneProduct);
+  .get(getAllProducts)
+  .post(addProduct)
+  .put(editProduct)
+  .patch(toggleProductList);
+router.get('/products/:productId', getOneProduct);
 
 router // Genres CRUD
   .route('/genres')
-  .get(getAllGenres) // Getting all genres
-  .post(addGenre) // Adds a new genre
-  .put(editGenre) // Edits an existing genre
-  .patch(toggleGenreList); // Toggles genre listing
-router // Getting single genre
-  .get('/genres/:genreId', getOneGenre);
+  .get(getAllGenres)
+  .post(addGenre)
+  .put(editGenre)
+  .patch(toggleGenreList);
+router.get('/genres/:genreId', getOneGenre);
 
 router // Brands CRUD
   .route('/brands')
-  .get(getAllBrands) // Getting all brands
-  .post(addBrand) // Adds a new brand
-  .put(editBrand) // Edits an existing brand
-  .patch(toggleBrandList); // Toggles brand listing
-router // Getting single brand
-  .get('/brands/:brandId', getOneBrand);
+  .get(getAllBrands)
+  .post(addBrand)
+  .put(editBrand)
+  .patch(toggleBrandList);
+router.get('/brands/:brandId', getOneBrand);
 
-router // User Management
+router // User CRUD
   .route('/users')
-  .get(getAllUsers) // Getting all users
-  .patch(toggleBlockUser); // Getting all users
-router // Getting single user
-  .get('/users/:userId', getOneUser);
+  .get(getAllUsers)
+  .patch(toggleBlockUser);
+router.get('/users/:userId', getOneUser);
 
-router.route('/order').get(getAllOrders); // Getting all orders
+router // Order CRUD
+  .route('/order')
+  .get(getAllOrders);
 router
   .route('/order/:orderId')
-  .patch(updateOrderStatus) // Update order status
-  .put(requestReturnAdmin); // Request return
+  .patch(updateOrderStatus)
+  .put(requestReturnAdmin);
+
+router // Offer CRUD
+  .route('/offers')
+  .get(getAllOffers)
+  .post(addOffer);
+router
+  .route('/offers/:offerId')
+  .get(getOneOffer)
+  .put(editOffer)
+  .patch(toggleOfferList);
 
 export default router;

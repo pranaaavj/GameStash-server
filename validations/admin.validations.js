@@ -164,3 +164,52 @@ export const reviewSchema = Joi.object({
     'any.required': 'Comment is required',
   }),
 });
+
+// Offer schema
+export const offerSchema = Joi.object({
+  name: Joi.string().required().messages({
+    'string.empty': 'Offer name cannot be empty',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+  type: Joi.string().valid('Product', 'Brand').required().messages({
+    'any.only': 'Type must be either Product or Brand',
+    'string.empty': 'Offer type cannot be empty',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+  targetId: Joi.string().required().messages({
+    'string.empty': 'Target ID cannot be empty',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+  discountType: Joi.string().valid('percentage', 'amount').required().messages({
+    'any.only': 'Discount type must be either percentage or amount',
+    'string.empty': 'Discount type cannot be empty',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+  discountValue: Joi.number().positive().required().messages({
+    'number.base': 'Discount value must be a number',
+    'number.positive': 'Discount value must be a positive number',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+  startDate: Joi.date()
+    .custom((value, helpers) => {
+      const now = new Date();
+      const startOfToday = new Date(now.setHours(0, 0, 0, 0)); // Normalize to start of the day
+
+      if (value < startOfToday) {
+        return helpers.message(
+          'Offer start date must be today or in the future'
+        );
+      }
+      return value;
+    })
+    .required()
+    .messages({
+      'date.base': 'Offer start date must be a valid date',
+      'any.required': '{{#label}} cannot be empty',
+    }),
+  endDate: Joi.date().greater(Joi.ref('startDate')).required().messages({
+    'date.base': 'Offer end date must be a valid date',
+    'date.greater': 'Offer end date must be after the start date',
+    'any.required': '{{#label}} cannot be empty',
+  }),
+});

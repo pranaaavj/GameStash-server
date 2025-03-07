@@ -28,15 +28,14 @@ export const getAllProducts = async (req, res) => {
     populate: [
       { path: 'genre', select: 'name -_id' },
       { path: 'brand', select: 'name -_id' },
+      {
+        path: 'bestOffer',
+        select: 'name type discountValue discountType endDate',
+      },
     ],
   };
 
-  // Function to paginate the data
   const products = await paginate(Product, page, limit, queryOptions);
-
-  if (products?.result?.length === 0) {
-    throw new NotFoundError('No products found.');
-  }
 
   res.status(200).json({
     success: true,
@@ -154,7 +153,7 @@ export const editProduct = async (req, res) => {
 
   if (updatedProduct.brand) {
     // Checking for brand if brand is updated
-    const brandExist = await Brand.findOne({ name: updatedProduct.brand });
+    const brandExist = await Brand.findById(updatedProduct.brand);
     if (!brandExist) {
       throw new NotFoundError('The specified brand is not available.');
     }
@@ -163,7 +162,7 @@ export const editProduct = async (req, res) => {
 
   if (updatedProduct.genre) {
     // Checking for genre if genre is updated
-    const genreExist = await Genre.findOne({ name: updatedProduct.genre });
+    const genreExist = await Genre.findById(updatedProduct.genre);
     if (!genreExist) {
       throw new NotFoundError('The specified genre is not available.');
     }
@@ -211,7 +210,7 @@ export const toggleProductList = async (req, res) => {
   product.isActive = !product.isActive;
   await product.save();
 
-  res.status(204).json({
+  res.status(200).json({
     success: true,
     message: `Product ${
       product.isActive ? 'listed' : 'unlisted'
@@ -248,6 +247,13 @@ export const getProducts = async (req, res) => {
         from: 'brands',
         localField: 'brand',
         as: 'brand',
+        match: { isActive: true },
+        single: true,
+      },
+      {
+        from: 'offers',
+        localField: 'bestOffer',
+        as: 'bestOffer',
         match: { isActive: true },
         single: true,
       },
@@ -345,11 +351,11 @@ export const getProductsByGenre = async (req, res) => {
   });
 };
 
-// /**
-//  * @route GET - /products/search
-//  * @desc  User - User searching products
-//  * @access Public
-//  */
+/**
+ * @route GET - /products/search
+ * @desc  User - User searching products
+ * @access Public
+ */
 export const searchProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -435,6 +441,20 @@ export const searchProducts = async (req, res) => {
             },
           }
         : {},
+    },
+    {
+      $lookup: {
+        from: 'offers',
+        localField: 'bestOffer',
+        foreignField: '_id',
+        as: 'bestOffer',
+      },
+    },
+    {
+      $unwind: {
+        path: '$bestOffer',
+        preserveNullAndEmptyArrays: true,
+      },
     }
   );
 

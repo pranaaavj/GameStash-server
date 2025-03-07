@@ -29,10 +29,6 @@ export const getReviewsByProduct = async (req, res) => {
     'name'
   );
 
-  if (!reviews.length) {
-    throw new NotFoundError('No reviews found for this product.');
-  }
-
   res.status(200).json({
     success: true,
     message: 'Product reviews retrieved successfully.',

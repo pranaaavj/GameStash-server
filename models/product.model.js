@@ -60,6 +60,21 @@ const ProductSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    applicableOffers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Offer',
+      },
+    ],
+    bestOffer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Offer',
+      default: null,
+    },
+    discountedPrice: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

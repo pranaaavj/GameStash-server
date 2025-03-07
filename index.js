@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './utils/cronJobs.js';
 import 'express-async-errors';
 import cors from './config/cors.config.js';
 import helmet from 'helmet';
@@ -12,13 +13,18 @@ import errorHandler from './middlewares/error.middleware.js';
 const app = express();
 
 // Middlewares
-app.use(cors); // Cross origin resource sharing
-app.use(cookieParser()); // For parsing cookies
+app.use(cors);
+app.use(cookieParser());
 // app.use(limiter); // Rate limiter
-app.use(helmet()); // Security headers
+app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Delay for development
+// app.use((req, res, next) => {
+//   setTimeout(() => next(), 1000);
+// });
 
 // Routes
 app.use('/api', router);

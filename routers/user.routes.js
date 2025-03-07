@@ -43,50 +43,50 @@ import { getGenresUser } from '../controllers/genre.controller.js';
 const router = express.Router();
 
 router // User home products
-  .get('/products', getProducts) // Get all products
-  .get('/products/search', searchProducts) // Search products
-  .get('/product/:productId', getProduct) // Get single product by ID
-  .get('/products/:genre', getProductsByGenre) // Get products by genre
-  .get('/brands', getBrandsUser) // Get all brands
-  .get('/genres', getGenresUser) // Get all genres
-  .post('/review', addReview) // Add a review
-  .get('/review/:productId', getReviewsByProduct); // Get reviews by product by ID
+  .get('/products', getProducts) 
+  .get('/products/search', searchProducts) 
+  .get('/product/:productId', getProduct) 
+  .get('/products/:genre', getProductsByGenre) 
+  .get('/brands', getBrandsUser)
+  .get('/genres', getGenresUser)
+  .post('/review', addReview) 
+  .get('/review/:productId', getReviewsByProduct); 
 
 router.use(verifyAuth(['user', 'admin'])); // These routes need authentication
 
 router // Profile management
-  .get('/details/:userId', getUserDetails) // Get user by ID
-  .patch('/details/:userId', editUserDetails) // Edit user by ID
-  .patch('/details/change-pass/:userId', changePassUser); // Change password by user ID
+  .get('/details/:userId', getUserDetails) 
+  .patch('/details/:userId', editUserDetails) 
+  .patch('/details/change-pass/:userId', changePassUser); 
 
 router // Address management
   .route('/address')
-  .post(addAddress) // Add a new address
-  .get(getAllAddresses); // List all addresses of user
+  .post(addAddress) 
+  .get(getAllAddresses);
 router
   .route('/address/:addressId')
-  .get(getOneAddress) // Get one address by ID
-  .patch(editAddress) // Update an address by ID
-  .delete(deleteAddress); // Delete an address by ID
+  .get(getOneAddress)
+  .patch(editAddress)
+  .delete(deleteAddress); 
 
 router // Cart management
   .route('/cart')
-  .get(getCart) // Get the cart for a specific user
-  .delete(clearCart) // Clear the entire cart
-  .post(addItemToCart) // Add an item to the cart
-  .patch(updateCartItem); // Update the quantity of a specific item
-router // Remove an item from the cart
+  .get(getCart) 
+  .delete(clearCart) 
+  .post(addItemToCart)
+  .patch(updateCartItem); 
+router 
   .delete('/cart/:productId', removeItemFromCart);
 
 router // Order functionality
   .route('/order')
-  .post(placeOrder) // Place an order
-  .get(getUserOrders); // Get all orders of a user
+  .post(placeOrder) 
+  .get(getUserOrders); 
 router
   .route('/order/:orderId')
-  .get(getUserOrder) // Get a specific order by ID
-  .patch(requestReturnOrder) // Request an order return
-  .put(cancelOrder); // Cancel a order
+  .get(getUserOrder) 
+  .patch(requestReturnOrder) 
+  .put(cancelOrder); 
 router.post('/order/razorpay', verifyRazorpay);
 
 export default router;

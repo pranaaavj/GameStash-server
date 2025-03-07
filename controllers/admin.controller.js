@@ -8,6 +8,7 @@ import {
   createAccessToken,
   createRefreshToken,
   paginate,
+  verifyToken,
 } from '../utils/index.js';
 import { isValidObjectId } from 'mongoose';
 import { loginSchema } from '../validations/auth.validation.js';
@@ -182,6 +183,10 @@ export const toggleBlockUser = async (req, res) => {
   const user = await User.findById(userId);
   if (!user) {
     throw new NotFoundError('No User found.');
+  }
+
+  if (user.role === 'admin') {
+    throw new BadRequestError(`You cannot block an admin.`);
   }
 
   user.status = user.status === 'blocked' ? 'active' : 'blocked';

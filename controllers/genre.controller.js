@@ -27,10 +27,6 @@ export const getAllGenres = async (req, res) => {
 
   const genres = await paginate(Genre, page, limit, queryOptions);
 
-  if (genres?.result?.length === 0) {
-    throw new NotFoundError('No genres found');
-  }
-
   res.status(200).json({
     success: true,
     message: 'All Genres',

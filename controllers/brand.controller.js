@@ -24,10 +24,6 @@ export const getAllBrands = async (req, res) => {
 
   const brands = await paginate(Brand, page, limit, queryOptions);
 
-  if (brands?.result?.length === 0) {
-    throw new NotFoundError('No brands found');
-  }
-
   res.status(200).json({
     success: true,
     message: 'All Brands',

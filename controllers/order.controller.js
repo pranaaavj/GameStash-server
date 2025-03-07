@@ -1,17 +1,16 @@
-import Order from '../models/order.model.js';
-import Product from '../models/product.model.js';
-import Address from '../models/address.model.js';
-import Cart from '../models/cart.model.js';
-import Razorpay from 'razorpay';
-import { BadRequestError, NotFoundError } from '../errors/index.js';
 import {
   placeOrderSchema,
   verifyRazorpaySchema,
 } from '../validations/user.validations.js';
+import Order from '../models/order.model.js';
+import Cart from '../models/cart.model.js';
+import crypto from 'crypto';
+import Address from '../models/address.model.js';
+import Product from '../models/product.model.js';
 import { paginate } from '../utils/paginate.js';
 import { isValidObjectId } from 'mongoose';
-import crypto from 'crypto';
 import { createRazorpayOrder } from '../utils/createRazorpayOrder.js';
+import { BadRequestError, NotFoundError } from '../errors/index.js';
 
 /*****************************************/
 // Orders - User
@@ -566,10 +565,6 @@ export const getAllOrders = async (req, res) => {
   };
 
   const orders = await paginate(Order, page, limit, queryOptions);
-
-  if (orders?.result?.length === 0) {
-    throw new NotFoundError('No orders found for this user');
-  }
 
   res.status(200).json({
     success: true,
