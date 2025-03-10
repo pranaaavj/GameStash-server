@@ -1,5 +1,4 @@
-// Dynamic get products controller
-
+//* Dynamic get products controller
 // export const getProducts = async (req, res) => {
 //   const page = parseInt(req.query.page) || 1;
 //   const limit = parseInt(req.query.limit) || 10;
@@ -59,3 +58,42 @@
 //     },
 //   });
 // };
+
+//* Backup edit product schema
+// export const editProductSchema = Joi.object({
+//   productId: Joi.string(),
+//   name: Joi.string(),
+//   images: Joi.alternatives()
+//     .try(
+//       Joi.string().uri().label('Image URL'),
+//       Joi.array()
+//         .items(Joi.string().uri().label('Image URL'))
+//         .label('Images Array')
+//     )
+//     .required()
+//     .label('Images')
+//     .messages({
+//       'alternatives.match':
+//         'Images should be either a single valid URL or an array of URLs.',
+//       'string.uri': 'Each image must be a valid URL.',
+//       'array.includes': 'All items in the array must be valid URLs.',
+//     }),
+//   price: Joi.number().positive(),
+//   genre: Joi.string(),
+//   platform: Joi.string().valid(
+//     'PC',
+//     'PlayStation',
+//     'Xbox',
+//     'Nintendo',
+//     'Other'
+//   ),
+//   brand: Joi.string(),
+//   stock: Joi.number().integer().min(0),
+//   description: Joi.string(),
+//   systemRequirements: Joi.object({
+//     cpu: Joi.string().label('CPU'),
+//     gpu: Joi.string().label('GPU'),
+//     ram: Joi.string().label('RAM'),
+//     storage: Joi.string().label('Storage'),
+//   }).label('System Requirements'),
+// });

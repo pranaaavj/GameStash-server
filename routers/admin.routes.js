@@ -41,6 +41,13 @@ import {
   getAllOffers,
   getOneOffer,
 } from '../controllers/offer.controller.js';
+import {
+  addCoupon,
+  editCoupon,
+  getAllCoupons,
+  getOneCoupon,
+  toggleCouponList,
+} from '../controllers/coupon.controller.js';
 
 const router = express.Router();
 
@@ -98,5 +105,15 @@ router
   .get(getOneOffer)
   .put(editOffer)
   .patch(toggleOfferList);
+
+router // Coupon CRUD
+  .route('/coupons')
+  .get(getAllCoupons)
+  .post(addCoupon);
+router
+  .route('/coupons/:couponId')
+  .get(getOneCoupon)
+  .put(editCoupon)
+  .patch(toggleCouponList);
 
 export default router;

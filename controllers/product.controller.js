@@ -95,14 +95,14 @@ export const addProduct = async (req, res) => {
     abortEarly: false,
   });
 
-  // Checking for brand
-  const brandExist = await Brand.findOne({ name: brand });
+  console.log(typeof price);
+
+  const brandExist = await Brand.findById(brand);
   if (!brandExist) {
     throw new NotFoundError('The specified brand is not available.');
   }
 
-  // Checking for genre
-  const genreExist = await Genre.findOne({ name: genre });
+  const genreExist = await Genre.findById(genre);
   if (!genreExist) {
     throw new NotFoundError('The specified genre is not available.');
   }
@@ -213,7 +213,7 @@ export const toggleProductList = async (req, res) => {
   res.status(200).json({
     success: true,
     message: `Product ${
-      product.isActive ? 'listed' : 'unlisted'
+      product.isActive ? 'activated' : 'deactivated'
     } successfully.`,
     data: product,
   });

@@ -135,7 +135,9 @@ export const toggleBrandList = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `Brand ${brand.isActive ? 'Listed' : 'Unlisted'} successfully.`,
+    message: `Brand ${
+      brand.isActive ? 'activated' : 'deactivated'
+    } successfully.`,
     data: brand,
   });
 };

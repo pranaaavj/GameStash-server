@@ -15,7 +15,7 @@ const OfferSchema = new mongoose.Schema(
     targetId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      refPath: 'type', // Dynamically reference either 'Product' or 'Category'
+      refPath: 'type',
     },
     discountType: {
       type: String,
@@ -42,7 +42,6 @@ const OfferSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Automatically deactivate expired offers
 OfferSchema.pre('save', function (next) {
   if (this.expirationDate < new Date()) {
     this.isActive = false;

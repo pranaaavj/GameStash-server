@@ -5,9 +5,11 @@ export const selectBestOfferForProduct = async (productId) => {
     'applicableOffers'
   );
 
-  if (!product) {
-    return null;
-  }
+  if (!product) return null;
+
+  product.applicableOffers = product.applicableOffers.filter(
+    (offer) => offer.isActive
+  );
 
   let bestOffer = null;
   let bestDiscount = 0;

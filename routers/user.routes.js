@@ -39,54 +39,64 @@ import {
 } from '../controllers/order.controller.js';
 import { getBrandsUser } from '../controllers/brand.controller.js';
 import { getGenresUser } from '../controllers/genre.controller.js';
+import {
+  addMoneyWallet,
+  getOneWallet,
+  verifyAddMoneyWallet,
+} from '../controllers/wallet.controller.js';
 
 const router = express.Router();
 
 router // User home products
-  .get('/products', getProducts) 
-  .get('/products/search', searchProducts) 
-  .get('/product/:productId', getProduct) 
-  .get('/products/:genre', getProductsByGenre) 
+  .get('/products', getProducts)
+  .get('/products/search', searchProducts)
+  .get('/product/:productId', getProduct)
+  .get('/products/:genre', getProductsByGenre)
   .get('/brands', getBrandsUser)
   .get('/genres', getGenresUser)
-  .post('/review', addReview) 
-  .get('/review/:productId', getReviewsByProduct); 
+  .post('/review', addReview)
+  .get('/review/:productId', getReviewsByProduct);
 
 router.use(verifyAuth(['user', 'admin'])); // These routes need authentication
 
 router // Profile management
-  .get('/details/:userId', getUserDetails) 
-  .patch('/details/:userId', editUserDetails) 
-  .patch('/details/change-pass/:userId', changePassUser); 
+  .get('/details/:userId', getUserDetails)
+  .patch('/details/:userId', editUserDetails)
+  .patch('/details/change-pass/:userId', changePassUser);
 
 router // Address management
   .route('/address')
-  .post(addAddress) 
+  .post(addAddress)
   .get(getAllAddresses);
 router
   .route('/address/:addressId')
   .get(getOneAddress)
   .patch(editAddress)
-  .delete(deleteAddress); 
+  .delete(deleteAddress);
 
 router // Cart management
   .route('/cart')
-  .get(getCart) 
-  .delete(clearCart) 
+  .get(getCart)
+  .delete(clearCart)
   .post(addItemToCart)
-  .patch(updateCartItem); 
-router 
-  .delete('/cart/:productId', removeItemFromCart);
+  .patch(updateCartItem);
+router.delete('/cart/:productId', removeItemFromCart);
 
 router // Order functionality
   .route('/order')
-  .post(placeOrder) 
-  .get(getUserOrders); 
+  .post(placeOrder)
+  .get(getUserOrders);
 router
   .route('/order/:orderId')
-  .get(getUserOrder) 
-  .patch(requestReturnOrder) 
-  .put(cancelOrder); 
+  .get(getUserOrder)
+  .patch(requestReturnOrder)
+  .put(cancelOrder);
 router.post('/order/razorpay', verifyRazorpay);
+
+router // Wallet functionality
+  .route('/wallet')
+  .get(getOneWallet)
+  .post(addMoneyWallet)
+  .patch(verifyAddMoneyWallet);
 
 export default router;

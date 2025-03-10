@@ -142,7 +142,9 @@ export const toggleGenreList = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `Genre ${genre.isActive ? 'Listed' : 'Unlisted'} successfully.`,
+    message: `Genre ${
+      genre.isActive ? 'activated' : 'deactivated'
+    } successfully.`,
     data: genre,
   });
 };
