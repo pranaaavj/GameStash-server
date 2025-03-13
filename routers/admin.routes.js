@@ -21,8 +21,12 @@ import {
   toggleBrandList,
 } from '../controllers/brand.controller.js';
 import {
+  generateSalesExcel,
+  generateSalesPDF,
   getAllUsers,
   getOneUser,
+  getSalesData,
+  getSalesReport,
   loginAdmin,
   logoutAdmin,
   refreshTokenAdmin,
@@ -36,16 +40,16 @@ import {
 } from '../controllers/order.controller.js';
 import {
   addOffer,
-  toggleOfferList,
   editOffer,
-  getAllOffers,
   getOneOffer,
+  getAllOffers,
+  toggleOfferList,
 } from '../controllers/offer.controller.js';
 import {
   addCoupon,
   editCoupon,
-  getAllCoupons,
   getOneCoupon,
+  getAllCoupons,
   toggleCouponList,
 } from '../controllers/coupon.controller.js';
 
@@ -115,5 +119,11 @@ router
   .get(getOneCoupon)
   .put(editCoupon)
   .patch(toggleCouponList);
+
+router // Sales Reports
+  .get('/reports/sales', getSalesReport)
+  .get('/reports/sales/data', getSalesData)
+  .get('/reports/sales/excel', generateSalesExcel)
+  .get('/reports/sales/pdf', generateSalesPDF);
 
 export default router;

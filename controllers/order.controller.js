@@ -7,6 +7,8 @@ import Cart from '../models/cart.model.js';
 import crypto from 'crypto';
 import Address from '../models/address.model.js';
 import Product from '../models/product.model.js';
+import Coupon from '../models/coupon.model.js';
+import Wallet from '../models/wallet.model.js';
 import { paginate } from '../utils/paginate.js';
 import { isValidObjectId } from 'mongoose';
 import { createRazorpayOrder } from '../utils/createRazorpayOrder.js';
@@ -22,23 +24,20 @@ import { BadRequestError, NotFoundError } from '../errors/index.js';
  * @access Private
  */
 export const placeOrder = async (req, res) => {
-  const {
-    orderItems,
-    shippingAddress,
-    paymentMethod,
-    couponCode,
-    couponDiscount,
-  } = await placeOrderSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
+  const { orderItems, shippingAddress, paymentMethod, couponCode } =
+    await placeOrderSchema.validateAsync(req.body, {
+      abortEarly: false,
+    });
 
   const userId = req?.user?.id;
-
-  // Validate stock and calculate item total prices
   let subtotal = 0;
+  let couponDiscount = 0;
+  let appliedCoupon = null;
+  let totalDiscount = 0;
 
   for (const item of orderItems) {
-    const product = await Product.findById(item.product);
+    const product = await Product.findById(item.product).populate('bestOffer');
+
     if (!product) {
       throw new NotFoundError(`Product not found for ID: ${item.product}`);
     }
@@ -49,9 +48,23 @@ export const placeOrder = async (req, res) => {
       );
     }
 
-    // Calculate item price after discount and add to subtotal
-    const itemTotalPrice =
-      item.price * (1 - (item.discount || 0) / 100) * item.quantity;
+    let itemDiscount = 0;
+    let effectivePrice = product.price;
+
+    if (product.bestOffer) {
+      if (product.bestOffer.discountType === 'percentage') {
+        itemDiscount = (product.price * product.bestOffer.discountValue) / 100;
+      } else {
+        itemDiscount = product.bestOffer.discountValue;
+      }
+
+      itemDiscount = Math.min(itemDiscount, product.price);
+      effectivePrice = product.price - itemDiscount;
+    }
+
+    totalDiscount += itemDiscount * item.quantity;
+
+    const itemTotalPrice = effectivePrice * item.quantity;
     item.totalPrice = itemTotalPrice;
     subtotal += itemTotalPrice;
 
@@ -64,28 +77,71 @@ export const placeOrder = async (req, res) => {
     await product.save();
   }
 
-  // Apply coupon discount
-  const couponAmount = subtotal * ((couponDiscount || 0) / 100);
-  const finalPrice = subtotal - couponAmount;
+  if (couponCode) {
+    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
 
-  await Cart.findOneAndUpdate(
-    { user: userId },
-    {
-      $set: {
-        items: orderItems,
-        total: subtotal,
-        discount: couponAmount,
-      },
-    },
-    { new: true, upsert: true }
-  );
+    if (!coupon) {
+      throw new NotFoundError('Invalid coupon code.');
+    }
+
+    if (!coupon.isActive) {
+      throw new BadRequestError('This coupon is no longer active.');
+    }
+
+    const currentDate = new Date();
+    if (currentDate < coupon.startDate || currentDate > coupon.endDate) {
+      throw new BadRequestError('This coupon has expired.');
+    }
+
+    if (subtotal < coupon.minOrderAmount) {
+      throw new BadRequestError(
+        `Minimum order amount should be ₹${coupon.minOrderAmount} to use this coupon.`
+      );
+    }
+
+    const userUsage = coupon.usersUsed.find((entry) =>
+      entry.userId.equals(userId)
+    );
+    if (userUsage && userUsage.timesUsed >= coupon.perUserLimit) {
+      throw new BadRequestError(
+        'You have reached the usage limit for this coupon.'
+      );
+    }
+
+    if (coupon.discountType === 'percentage') {
+      couponDiscount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscountAmount) {
+        couponDiscount = Math.min(couponDiscount, coupon.maxDiscountAmount);
+      }
+    } else {
+      couponDiscount = coupon.discountValue;
+    }
+
+    couponDiscount = Math.min(couponDiscount, subtotal);
+
+    totalDiscount += couponDiscount;
+
+    const userCouponIndex = coupon.usersUsed.findIndex((entry) =>
+      entry.userId.equals(userId)
+    );
+
+    if (userCouponIndex === -1) {
+      coupon.usersUsed.push({ userId, timesUsed: 1 });
+    } else {
+      coupon.usersUsed[userCouponIndex].timesUsed += 1;
+    }
+
+    await coupon.save();
+    appliedCoupon = coupon.code;
+  }
+
+  const finalPrice = Math.max(0, Math.round(subtotal - totalDiscount));
 
   const currentAddress = await Address.findById(shippingAddress);
   if (!currentAddress) {
     throw new NotFoundError('Address not found');
   }
 
-  // Sending order to Razorpay
   if (paymentMethod === 'Razorpay') {
     const razorpayOrder = await createRazorpayOrder(finalPrice);
     return res.status(200).json({
@@ -99,19 +155,18 @@ export const placeOrder = async (req, res) => {
     });
   }
 
-  // Create order
   const order = await Order.create({
     user: userId,
     orderItems,
     shippingAddress: currentAddress,
     paymentMethod,
-    couponCode: couponCode || null,
-    couponDiscount: couponAmount,
+    couponCode: appliedCoupon || null,
+    couponDiscount,
+    totalDiscount,
     totalAmount: subtotal,
     finalPrice,
   });
 
-  // Clear cart after order is placed
   if (paymentMethod !== 'Razorpay') {
     await Cart.deleteOne({ user: userId });
   }
@@ -136,10 +191,8 @@ export const verifyRazorpay = async (req, res) => {
     shippingAddress,
     paymentMethod,
     couponCode,
-    couponDiscount,
-  } = await verifyRazorpaySchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
+  } = await verifyRazorpaySchema.validateAsync(req.body, { abortEarly: false });
+
   const userId = req?.user?.id;
 
   const expectedSignature = crypto
@@ -156,37 +209,129 @@ export const verifyRazorpay = async (req, res) => {
     throw new NotFoundError('Address not found');
   }
 
-  const cart = await Cart.findOne({ user: userId }).populate('items.product');
+  const cart = await Cart.findOne({ user: userId }).populate({
+    path: 'items.product',
+    populate: { path: 'bestOffer' },
+  });
   if (!cart || cart.items.length === 0) {
     throw new BadRequestError('Cart is empty or not found.');
   }
 
+  let subtotal = 0;
+  let totalDiscount = 0;
+  let couponDiscount = 0;
+  let appliedCoupon = null;
+
+  const orderItems = cart.items.map((item) => {
+    const product = item.product;
+    if (!product) {
+      throw new NotFoundError(`Product not found: ${item.product}`);
+    }
+
+    let price = product.price;
+    let discountAmount = 0;
+
+    if (product.bestOffer) {
+      if (product.bestOffer.discountType === 'percentage') {
+        discountAmount = (price * product.bestOffer.discountValue) / 100;
+      } else {
+        discountAmount = product.bestOffer.discountValue;
+      }
+      discountAmount = Math.min(discountAmount, price);
+      price -= discountAmount;
+      totalDiscount += discountAmount * item.quantity;
+    }
+
+    console.log(price, item.quantity);
+
+    const totalPrice = price * item.quantity;
+
+    subtotal += totalPrice;
+
+    return {
+      product: product._id,
+      quantity: item.quantity,
+      price: product.price,
+      discount: discountAmount,
+      totalPrice,
+    };
+  });
+
+  if (couponCode) {
+    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+
+    if (!coupon) {
+      throw new NotFoundError('Invalid coupon code.');
+    }
+
+    if (!coupon.isActive) {
+      throw new BadRequestError('This coupon is no longer active.');
+    }
+
+    const currentDate = new Date();
+    if (currentDate < coupon.startDate || currentDate > coupon.endDate) {
+      throw new BadRequestError('This coupon has expired.');
+    }
+
+    if (subtotal < coupon.minOrderAmount) {
+      throw new BadRequestError(
+        `Minimum order amount should be ₹${coupon.minOrderAmount} to use this coupon.`
+      );
+    }
+
+    const userUsage = coupon.usersUsed.find((entry) =>
+      entry.userId.equals(userId)
+    );
+    if (userUsage && userUsage.timesUsed >= coupon.perUserLimit) {
+      throw new BadRequestError(
+        'You have reached the usage limit for this coupon.'
+      );
+    }
+
+    if (coupon.discountType === 'percentage') {
+      couponDiscount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscountAmount) {
+        couponDiscount = Math.min(couponDiscount, coupon.maxDiscountAmount);
+      }
+    } else {
+      couponDiscount = coupon.discountValue;
+    }
+
+    couponDiscount = Math.min(couponDiscount, subtotal);
+    totalDiscount += couponDiscount;
+    appliedCoupon = coupon.code;
+
+    const userCouponIndex = coupon.usersUsed.findIndex((entry) =>
+      entry.userId.equals(userId)
+    );
+
+    if (userCouponIndex === -1) {
+      coupon.usersUsed.push({ userId, timesUsed: 1 });
+    } else {
+      coupon.usersUsed[userCouponIndex].timesUsed += 1;
+    }
+
+    await coupon.save();
+  }
+
+  const finalPrice = Math.round(subtotal - totalDiscount);
+
   const order = await Order.create({
     user: userId,
-    orderItems: cart.items.map((item) => ({
-      product: item.product._id,
-      quantity: item.quantity,
-      price: item.product.price,
-      discount: item.product.discount || 0,
-      totalPrice:
-        item.quantity *
-        (item.product.price * (1 - (item.product.discount || 0) / 100)),
-    })),
+    orderItems,
     shippingAddress: currentAddress,
     paymentMethod,
     paymentStatus: 'Paid',
-    couponCode: couponCode || null,
+    couponCode: appliedCoupon || null,
     couponDiscount,
-    totalAmount: cart.total,
-    finalPrice: cart.total - cart.discount,
+    totalDiscount,
+    totalAmount: subtotal,
+    finalPrice,
   });
 
   for (const item of cart.items) {
     await Product.findByIdAndUpdate(item.product._id, {
-      $inc: {
-        stock: -item.quantity,
-        reservedStock: -item.quantity,
-      },
+      $inc: { stock: -item.quantity, reservedStock: -item.quantity },
     });
   }
 
@@ -195,6 +340,230 @@ export const verifyRazorpay = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Payment confirmed successfully',
+    data: order,
+  });
+};
+
+/**
+ * @route PUT - user/order/:orderId
+ * @desc  User - Cancel an order
+ * @access Private
+ */
+export const cancelOrder = async (req, res) => {
+  const { orderId } = req.params;
+  const { productId } = req.body;
+
+  if (!isValidObjectId(orderId)) {
+    throw new BadRequestError('Invalid order ID.');
+  }
+
+  const order = await Order.findById(orderId).populate('orderItems.product');
+  if (!order) {
+    throw new NotFoundError('Order not found');
+  }
+
+  if (order.orderStatus === 'Cancelled') {
+    throw new BadRequestError('Order is already cancelled.');
+  }
+
+  if (productId) {
+    if (!isValidObjectId(productId)) {
+      throw new BadRequestError('Invalid product ID.');
+    }
+
+    const orderItem = order.orderItems.find((item) =>
+      item.product._id.equals(productId)
+    );
+
+    if (!orderItem) {
+      throw new NotFoundError('Product does not exist in this order.');
+    }
+
+    const invalidStatus = [
+      'Shipped',
+      'Delivered',
+      'Returned',
+      'Return Requested',
+      'Return Rejected',
+    ];
+    if (invalidStatus.includes(orderItem.status)) {
+      throw new BadRequestError(
+        `Product is already ${orderItem.status.toLowerCase()} and cannot be cancelled.`
+      );
+    }
+
+    let refundAmount = orderItem.totalPrice;
+
+    if (order.couponCode) {
+      const totalOrderValue = order.totalAmount;
+      const couponDiscount = order.couponDiscount;
+
+      const productDiscountShare =
+        (orderItem.totalPrice / totalOrderValue) * couponDiscount;
+
+      refundAmount = Math.round(orderItem.totalPrice - productDiscountShare);
+    }
+
+    const product = await Product.findById(orderItem.product._id);
+    if (product) {
+      product.stock += orderItem.quantity;
+      await product.save();
+    }
+
+    if (order.paymentStatus === 'Paid') {
+      let wallet = await Wallet.findOne({ userId: order.user });
+
+      if (!wallet) {
+        wallet = await Wallet.create({ userId: order.user, transactions: [] });
+      }
+
+      wallet.transactions.push({
+        type: 'credit',
+        amount: refundAmount,
+        status: 'completed',
+      });
+
+      wallet.balance += refundAmount;
+      order.refundedAmount += refundAmount;
+
+      await wallet.save();
+    }
+
+    orderItem.status = 'Cancelled';
+
+    const remainingItems = order.orderItems.filter(
+      (item) =>
+        !['Cancelled', 'Returned', 'Return Rejected'].includes(item.status)
+    );
+
+    if (remainingItems.length === 0) {
+      order.orderStatus = 'Cancelled';
+    } else if (remainingItems.some((item) => item.status === 'Delivered')) {
+      order.orderStatus = 'Partially Cancelled';
+    }
+
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product has been successfully cancelled.',
+      data: order,
+    });
+  }
+
+  const invalidOrderStatuses = ['Shipped', 'Delivered'];
+  if (invalidOrderStatuses.includes(order.orderStatus)) {
+    throw new BadRequestError(
+      `Cannot cancel order as it is already ${order.orderStatus.toLowerCase()}.`
+    );
+  }
+
+  for (const item of order.orderItems) {
+    if (!['Cancelled', 'Returned', 'Return Rejected'].includes(item.status)) {
+      const product = await Product.findById(item.product);
+      if (product) {
+        product.stock += item.quantity;
+        await product.save();
+      }
+      item.status = 'Cancelled';
+    }
+  }
+
+  if (order.paymentStatus === 'Paid') {
+    let wallet = await Wallet.findOne({ userId: order.user });
+
+    if (!wallet) {
+      wallet = await Wallet.create({ userId: order.user, transactions: [] });
+    }
+
+    wallet.transactions.push({
+      type: 'credit',
+      amount: order.finalPrice,
+      status: 'completed',
+    });
+
+    wallet.balance += order.finalPrice;
+    order.refundedAmount = order.finalPrice;
+
+    await wallet.save();
+  }
+
+  order.orderStatus = 'Cancelled';
+  await order.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Order has been successfully cancelled.',
+    data: order,
+  });
+};
+
+/**
+ * @route PATCH - user/order/:orderId
+ * @desc  User - Request to return an order
+ * @access Private
+ */
+export const requestReturnOrder = async (req, res) => {
+  const { orderId } = req.params;
+  const { productId, reason = 'No Reason' } = req.body;
+
+  if (!isValidObjectId(orderId)) {
+    throw new BadRequestError('Invalid order ID.');
+  }
+
+  if (!isValidObjectId(productId)) {
+    throw new BadRequestError('Invalid product ID.');
+  }
+
+  const order = await Order.findById(orderId).populate('orderItems.product');
+  if (!order) {
+    throw new NotFoundError('Order not found');
+  }
+
+  if (order.orderStatus === 'Cancelled') {
+    throw new BadRequestError('Order is already cancelled.');
+  }
+
+  const orderItem = order.orderItems.find((obj) =>
+    obj?.product?.equals(productId)
+  );
+
+  if (!orderItem) {
+    throw new NotFoundError('Product does not exist in this order.');
+  }
+
+  const product = await Product.findById(orderItem.product);
+  if (!product) {
+    throw new NotFoundError('Product was not found');
+  }
+
+  const invalidStatus = ['Shipped', 'Cancelled'];
+  if (invalidStatus.includes(orderItem.status)) {
+    throw new BadRequestError(
+      `Product is already ${orderItem.status.toLowerCase()}`
+    );
+  }
+
+  if (orderItem.returnRequest.requested) {
+    throw new BadRequestError(
+      'Return request for this product has already been initiated.'
+    );
+  }
+
+  orderItem.returnRequest = {
+    requested: true,
+    reason,
+    approved: false,
+    responseSent: false,
+  };
+
+  orderItem.status = 'Return Requested';
+
+  await order.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Return request has been sent.',
     data: order,
   });
 };
@@ -264,144 +633,6 @@ export const getUserOrder = async (req, res) => {
   });
 };
 
-/**
- * @route PUT - user/order/:orderId
- * @desc  User - Cancel an order
- * @access Private
- */
-export const cancelOrder = async (req, res) => {
-  const { orderId } = req.params;
-  const { productId } = req.body;
-
-  if (!isValidObjectId(orderId)) {
-    throw new BadRequestError('Invalid order ID.');
-  }
-
-  if (!isValidObjectId(productId)) {
-    throw new BadRequestError('Invalid product ID.');
-  }
-
-  const order = await Order.findById(orderId).populate('orderItems.product');
-  if (!order) {
-    throw new NotFoundError('Order not found');
-  }
-
-  if (order.orderStatus === 'Cancelled') {
-    throw new BadRequestError('Order is already cancelled.');
-  }
-
-  const orderItem = order.orderItems.find((obj) =>
-    obj.product.equals(productId)
-  );
-
-  if (!orderItem) {
-    throw new NotFoundError('Product does not exist in this order.');
-  }
-
-  const invalidStatus = ['Delivered', 'Shipped', 'Cancelled'];
-  if (invalidStatus.includes(orderItem.status)) {
-    throw new BadRequestError(
-      `Product is already ${orderItem.status.toLowerCase()}`
-    );
-  }
-
-  const product = await Product.findById(orderItem.product);
-  if (!product) {
-    throw new NotFoundError('Product was not found');
-  }
-  const cancelledQuantity = orderItem.quantity;
-  product.stock += cancelledQuantity;
-  orderItem.status = 'Cancelled';
-
-  const allItemsCancelled = order.orderItems.every(
-    (item) => item.status === 'Cancelled'
-  );
-
-  if (allItemsCancelled) {
-    order.orderStatus = 'Cancelled';
-  }
-
-  await order.save();
-  await product.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'Order has been successfully cancelled.',
-    data: order,
-  });
-};
-
-/**
- * @route PATCH - user/order/:orderId
- * @desc  User - Request to return an order
- * @access Private
- */
-export const requestReturnOrder = async (req, res) => {
-  const { orderId } = req.params;
-  const { productId, reason = 'No Reason' } = req.body;
-
-  if (!isValidObjectId(orderId)) {
-    throw new BadRequestError('Invalid order ID.');
-  }
-
-  if (!isValidObjectId(productId)) {
-    throw new BadRequestError('Invalid product ID.');
-  }
-
-  const order = await Order.findById(orderId).populate('orderItems.product');
-  if (!order) {
-    throw new NotFoundError('Order not found');
-  }
-
-  if (order.orderStatus === 'Cancelled') {
-    throw new BadRequestError('Order is already cancelled.');
-  }
-
-  const orderItem = order.orderItems.find((obj) =>
-    obj?.product?.equals(productId)
-  );
-
-  if (!orderItem) {
-    throw new NotFoundError('Product does not exist in this order.');
-  }
-
-  const invalidStatus = ['Delivered', 'Shipped', 'Cancelled'];
-  if (invalidStatus.includes(orderItem.status)) {
-    throw new BadRequestError(
-      `Product is already ${orderItem.status.toLowerCase()}`
-    );
-  }
-
-  if (orderItem.returnRequest.requested) {
-    throw new BadRequestError(
-      'Return request for this product has already been initiated.'
-    );
-  }
-
-  orderItem.returnRequest = {
-    requested: true,
-    reason,
-    approved: false,
-    responseSent: false,
-  };
-
-  orderItem.status = 'Return Requested';
-
-  const product = await Product.findById(orderItem.product);
-  if (!product) {
-    throw new NotFoundError('Product was not found');
-  }
-
-  await product.save();
-  await order.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'Return request has been sent.',
-    data: order,
-  });
-};
-
 /*****************************************/
 // Order Management - Admin
 /*****************************************/
@@ -415,25 +646,71 @@ export const updateOrderStatus = async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
 
-  const order = await Order.findById(orderId);
+  // Validate order ID
+  if (!isValidObjectId(orderId)) {
+    throw new BadRequestError('Invalid order ID.');
+  }
+
+  const order = await Order.findById(orderId).populate('orderItems.product');
   if (!order) {
-    throw new NotFoundError('Order not found');
+    throw new NotFoundError('Order not found.');
   }
 
-  if (order.orderStatus === 'Cancelled') {
-    throw new BadRequestError('Cancelled order cannot be further changed.');
+  const validTransitions = {
+    Processing: ['Shipped', 'Cancelled'],
+    Shipped: ['Delivered', 'Cancelled'],
+    Delivered: [],
+    Cancelled: [],
+  };
+
+  if (!validTransitions[order.orderStatus]?.includes(status)) {
+    throw new BadRequestError(
+      `Invalid status transition from ${order.orderStatus} to ${status}.`
+    );
   }
 
-  if (status === 'Cancelled' && order.orderStatus !== 'Shipped') {
-    // Handle stock restoration if needed for cancellations
+  if (status === 'Shipped') {
+    order.deliveryBy = new Date();
+    order.deliveryBy.setDate(order.deliveryBy.getDate() + 5);
+  }
+
+  if (status === 'Cancelled' && order.orderStatus === 'Processing') {
     for (const item of order.orderItems) {
       const product = await Product.findById(item.product);
-      product.stock += item.quantity;
-      await product.save();
+      if (product) {
+        product.stock += item.quantity;
+        await product.save();
+      }
     }
   }
 
+  let refundAmount = 0;
+  if (status === 'Cancelled' && order.paymentStatus === 'Paid') {
+    order.refundedAmount = order.finalPrice;
+    refundAmount = order.finalPrice;
+
+    let wallet = await Wallet.findOne({ userId: order.user });
+    if (!wallet) {
+      wallet = await Wallet.create({ userId: order.user, transactions: [] });
+    }
+
+    wallet.transactions.push({
+      type: 'credit',
+      amount: refundAmount,
+      status: 'completed',
+    });
+
+    wallet.balance += refundAmount;
+    order.refundedAmount = refundAmount;
+
+    await wallet.save();
+  }
+
+  order.orderItems.forEach((item) => {
+    if (item.status !== 'Cancelled') item.status = status;
+  });
   order.orderStatus = status;
+
   await order.save();
 
   res.status(200).json({
@@ -487,6 +764,7 @@ export const requestReturnAdmin = async (req, res) => {
     'Return Rejected',
     'Cancelled',
   ];
+
   if (invalidStatus.includes(orderItem.status)) {
     throw new BadRequestError(
       `Product is already ${orderItem.status.toLowerCase()}`
@@ -505,36 +783,37 @@ export const requestReturnAdmin = async (req, res) => {
   }
 
   if (action === 'approve') {
-    // Approve return request
     orderItem.returnRequest.approved = true;
     orderItem.status = 'Returned';
 
     const product = await Product.findById(productId);
     product.stock += orderItem.quantity;
     await product.save();
+
+    const orderDiscount = order.couponDiscount;
+    const orderTotal = order.finalPrice;
+
+    const discountRatio = orderDiscount / orderTotal;
+    const itemDiscount = orderItem.totalPrice * discountRatio;
+    const refundAmount = (orderItem.totalPrice - itemDiscount).toFixed();
+
+    let wallet = await Wallet.findOne({ userId: order.user });
+    if (!wallet) {
+      wallet = await Wallet.create({ userId: order.user, transactions: [] });
+    }
+
+    wallet.transactions.push({
+      type: 'credit',
+      amount: refundAmount,
+      status: 'completed',
+    });
+
+    wallet.balance += refundAmount;
+    await wallet.save();
   } else if (action === 'reject') {
-    // Reject return request
     orderItem.returnRequest.approved = false;
     orderItem.status = 'Return Rejected';
-  } else {
-    throw new BadRequestError(
-      'Invalid action, please use "approve" or "reject"'
-    );
   }
-
-  // await Order.findByIdAndUpdate(
-  //   {
-  //     _id: orderId,
-  //     'orderItems.product': productId,
-  //   },
-  //   {
-  //     $set: {
-  //       'orderItems.$.returnRequest.approved': action === 'approve',
-  //       'orderItems.$.status': action === 'approve' ? 'Returned' : 'Rejected',
-  //       'orderItems.$.returnRequest.responseSent': true,
-  //     },
-  //   }
-  // );
 
   orderItem.returnRequest.responseSent = true;
 
@@ -559,7 +838,7 @@ export const getAllOrders = async (req, res) => {
   const queryOptions = {
     sort: { updatedAt: -1 },
     populate: [
-      { path: 'orderItems.product', select: 'name price' },
+      { path: 'orderItems.product', select: 'name price images' },
       { path: 'user', select: 'name _id' },
     ],
   };

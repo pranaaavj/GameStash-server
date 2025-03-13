@@ -87,7 +87,7 @@ const OrderSchema = new mongoose.Schema(
     shippingAddress: AddressSchema,
     paymentMethod: {
       type: String,
-      enum: ['Wallet', 'Cash on Delivery', 'Credit Card', 'Razorpay'],
+      enum: ['Wallet', 'Cash on Delivery', 'Razorpay', 'UPI'],
       required: true,
     },
     paymentStatus: {
@@ -105,6 +105,8 @@ const OrderSchema = new mongoose.Schema(
         'Returned',
         'Return Requested',
         'Partially Cancelled',
+        'Partially Returned',
+        'Partially Delivered',
       ],
       default: 'Processing',
     },
@@ -139,21 +141,56 @@ OrderSchema.pre('save', function (next) {
     this.orderStatus = 'Cancelled';
   } else if (statuses.every((status) => status === 'Returned')) {
     this.orderStatus = 'Returned';
+  } else if (statuses.every((status) => status === 'Return Rejected')) {
+    this.orderStatus = 'Return Rejected';
   } else if (statuses.includes('Return Requested')) {
     this.orderStatus = 'Return Requested';
-  } else if (statuses.includes('Pending') || statuses.includes('Shipped')) {
-    this.orderStatus = 'Processing';
-  } else if (statuses.includes('Cancelled') && statuses.includes('Delivered')) {
-    this.orderStatus = 'Partially Cancelled';
-  } else if (statuses.includes('Returned') && statuses.includes('Shipped')) {
-    this.orderStatus = 'Partially Returned';
-  } else if (statuses.every((status) => status === 'Delivered')) {
+  } else if (
+    statuses.every((status) => status === 'Delivered' || status === 'Cancelled')
+  ) {
     this.orderStatus = 'Delivered';
+  } else if (
+    statuses.every((status) => status === 'Shipped' || status === 'Cancelled')
+  ) {
+    this.orderStatus = 'Shipped';
+  } else if (
+    statuses.every(
+      (status) => status === 'Processing' || status === 'Cancelled'
+    )
+  ) {
+    this.orderStatus = 'Processing';
+  } else if (
+    statuses.includes('Shipped') &&
+    statuses.includes('Delivered') &&
+    !statuses.includes('Return Requested')
+  ) {
+    this.orderStatus = 'Partially Delivered';
+  } else if (
+    statuses.includes('Cancelled') &&
+    statuses.includes('Delivered') &&
+    !statuses.includes('Return Requested')
+  ) {
+    this.orderStatus = 'Partially Cancelled';
+  } else if (
+    statuses.includes('Returned') &&
+    (statuses.includes('Shipped') || statuses.includes('Delivered')) &&
+    !statuses.includes('Return Requested')
+  ) {
+    this.orderStatus = 'Partially Returned';
+  } else if (
+    statuses.includes('Delivered') &&
+    statuses.includes('Return Rejected') &&
+    !statuses.includes('Return Requested')
+  ) {
+    this.orderStatus = 'Delivered'; // Return rejection shouldn't change order status
+  } else if (statuses.includes('Shipped')) {
+    this.orderStatus = 'Shipped';
+  } else if (statuses.includes('Processing')) {
+    this.orderStatus = 'Processing';
   } else {
     this.orderStatus = 'Processing';
   }
 
   next();
 });
-
 export default mongoose.model('Order', OrderSchema);

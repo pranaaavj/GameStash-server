@@ -130,7 +130,10 @@ export const editOffer = async (req, res) => {
   let targetExists = null;
 
   const isTargetChanged =
-    type !== offer.type || targetId !== String(offer.targetId);
+    type !== offer.type ||
+    targetId !== String(offer.targetId) ||
+    discountValue !== offer.discountValue ||
+    discountType !== offer.discountType;
 
   if (isTargetChanged) {
     targetExists =
@@ -142,7 +145,7 @@ export const editOffer = async (req, res) => {
       throw new NotFoundError(`The selected ${type} does not exist`);
   }
 
-  if (offer.type === 'Brand' && discountType !== 'percentage') {
+  if (type === 'Brand' && discountType !== 'percentage') {
     throw new BadRequestError(
       'Brands can only have percentage-based discounts.'
     );

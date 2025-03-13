@@ -44,6 +44,13 @@ import {
   getOneWallet,
   verifyAddMoneyWallet,
 } from '../controllers/wallet.controller.js';
+import { getEligibleCoupons } from '../controllers/coupon.controller.js';
+import {
+  addToWishlist,
+  getWishlist,
+  moveToCart,
+  removeFromWishlist,
+} from '../controllers/wishlist.controller.js';
 
 const router = express.Router();
 
@@ -98,5 +105,14 @@ router // Wallet functionality
   .get(getOneWallet)
   .post(addMoneyWallet)
   .patch(verifyAddMoneyWallet);
+
+router.get('/coupons/eligible', getEligibleCoupons);
+
+router // Wishlist functionality
+  .route('/wishlist')
+  .get(getWishlist)
+  .post(addToWishlist);
+router.delete('/wishlist/:productId', removeFromWishlist);
+router.post('/wishlist/:productId/cart', moveToCart);
 
 export default router;

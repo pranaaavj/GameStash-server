@@ -1,6 +1,6 @@
 import Cart from '../models/cart.model.js';
 import Product from '../models/product.model.js';
-import User from '../models/user.model.js';
+import Coupon from '../models/coupon.model.js';
 import { NotFoundError, BadRequestError } from '../errors/index.js';
 
 /*****************************************/
@@ -15,7 +15,12 @@ import { NotFoundError, BadRequestError } from '../errors/index.js';
 export const getCart = async (req, res) => {
   const userId = req.user.id;
 
-  const cart = await Cart.findOne({ user: userId }).populate('items.product');
+  const cart = await Cart.findOne({ user: userId }).populate({
+    path: 'items.product',
+    // match: { isActive: true },
+    populate: { path: 'bestOffer' },
+  });
+
   if (!cart) {
     throw new NotFoundError('Cart not found');
   }
@@ -97,7 +102,6 @@ export const updateCartItem = async (req, res) => {
     throw new NotFoundError('Product not found');
   }
 
-  console.log(quantity);
   if (product.stock < quantity) {
     throw new BadRequestError('Insufficient stock');
   }
@@ -159,3 +163,78 @@ export const clearCart = async (req, res) => {
     data: cart,
   });
 };
+
+// /**
+//  * @route POST /user/cart/apply-coupon
+//  * @desc  Apply a coupon to the user's cart
+//  * @access Private
+//  */
+
+// export const applyCoupon = async (req, res) => {
+//   const { code } = req.body;
+//   const userId = req.user.id;
+
+//   if (!code) {
+//     throw new BadRequestError('Coupon code is required.');
+//   }
+
+//   const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+//   if (!coupon) {
+//     throw new NotFoundError('Invalid coupon code.');
+//   }
+
+//   if (!coupon.isActive) {
+//     throw new BadRequestError('This coupon is not active.');
+//   }
+
+//   const currentDate = new Date();
+//   if (currentDate < coupon.startDate || currentDate > coupon.endDate) {
+//     throw new BadRequestError('This coupon has expired.');
+//   }
+
+//   const cart = await Cart.findOne({ user: userId });
+//   if (!cart || cart.items.length === 0) {
+//     throw new BadRequestError(
+//       'Your cart is empty. Add items to apply coupons.'
+//     );
+//   }
+
+//   if (cart.total < coupon.minOrderAmount) {
+//     throw new BadRequestError(
+//       `Minimum order amount should be $${coupon.minOrderAmount} to use this coupon.`
+//     );
+//   }
+
+//   const userUsage = coupon.usersUsed.find((entry) =>
+//     entry.userId.equals(userId)
+//   );
+//   if (userUsage && userUsage.timesUsed >= coupon.perUserLimit) {
+//     throw new BadRequestError(
+//       'You have reached the usage limit for this coupon.'
+//     );
+//   }
+
+//   let discountAmount = 0;
+//   if (coupon.discountType === 'percentage') {
+//     discountAmount = (cart.total * coupon.discountValue) / 100;
+//     if (coupon.maxDiscountAmount) {
+//       discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
+//     }
+//   } else {
+//     discountAmount = coupon.discountValue;
+//   }
+
+//   cart.discount = discountAmount;
+//   cart.finalTotal = cart.total - discountAmount;
+//   await cart.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: `Coupon applied successfully. You saved $${discountAmount}.`,
+//     data: {
+//       appliedCoupon: coupon.code,
+//       discount: discountAmount,
+//       finalTotal: cart.finalTotal,
+//     },
+//   });
+// };

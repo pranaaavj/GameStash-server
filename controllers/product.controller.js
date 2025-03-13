@@ -293,7 +293,9 @@ export const getProduct = async (req, res) => {
     );
   }
 
-  const product = await Product.findById(productId).populate('genre brand');
+  const product = await Product.findById(productId).populate(
+    'genre brand bestOffer'
+  );
   if (!product) {
     throw new NotFoundError('We couldn’t find the specified product.');
   }

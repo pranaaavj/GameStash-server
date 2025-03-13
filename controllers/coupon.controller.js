@@ -6,6 +6,11 @@ import {
 import { BadRequestError } from '../errors/index.js';
 import { isValidObjectId } from 'mongoose';
 import { paginate } from '../utils/paginate.js';
+import Cart from '../models/cart.model.js';
+
+/*****************************************/
+// Orders - Admin
+/*****************************************/
 
 /**
  * @route POST - /admin/coupons
@@ -96,7 +101,7 @@ export const editCoupon = async (req, res) => {
   if (!coupon) {
     throw new NotFoundError('Coupon not found.');
   }
-  console.log(discountType);
+
   if (discountType === 'amount') {
     maxDiscountAmount = null;
   }
@@ -220,3 +225,53 @@ export const getOneCoupon = async (req, res) => {
     data: coupon,
   });
 };
+
+/*****************************************/
+// Orders - User
+/*****************************************/
+
+/**
+ * @route GET - /user/coupons/eligible
+ * @desc  Get applicable coupons for a user based on cart total (Fetched from DB)
+ * @access Private
+ */
+export const getEligibleCoupons = async (req, res) => {
+  const userId = req.user.id;
+
+  const userCart = await Cart.findOne({ user: userId });
+
+  if (!userCart || userCart.items.length === 0) {
+    throw new BadRequestError('Your cart is empty. Add items to apply coupons');
+  }
+
+  const cartTotal = userCart.total;
+
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+
+  const applicableCoupons = await Coupon.find({
+    isActive: true,
+    startDate: { $lte: currentDate },
+    endDate: { $gte: currentDate },
+    minOrderAmount: { $lte: cartTotal },
+  });
+
+  const filteredCoupons = applicableCoupons.filter((coupon) => {
+    const userUsage = coupon.usersUsed.find((entry) =>
+      entry.userId.equals(userId)
+    );
+    return !userUsage || userUsage.timesUsed < coupon.perUserLimit;
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Applicable coupons retrieved successfully.',
+    data: filteredCoupons,
+  });
+};
+
+/**
+ * @route GET - /user/coupons/apply
+ * @desc  Apply coupon to cart
+ * @access Private
+ */

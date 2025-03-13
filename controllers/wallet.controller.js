@@ -2,6 +2,7 @@ import { BadRequestError, NotFoundError } from '../errors/index.js';
 import Wallet from '../models/wallet.model.js';
 import { createRazorpayOrder } from '../utils/createRazorpayOrder.js';
 import crypto from 'crypto';
+
 /**
  * @route GET - user/wallet
  * @desc  User - Get wallet
