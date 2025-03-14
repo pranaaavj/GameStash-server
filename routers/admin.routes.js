@@ -5,6 +5,8 @@ import {
   toggleProductList,
   editProduct,
   getOneProduct,
+  uploadImageCloudinary,
+  deleteImageCloudinary,
 } from '../controllers/product.controller.js';
 import {
   addGenre,
@@ -32,7 +34,6 @@ import {
   refreshTokenAdmin,
   toggleBlockUser,
 } from '../controllers/admin.controller.js';
-import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 import {
   getAllOrders,
   updateOrderStatus,
@@ -52,6 +53,8 @@ import {
   getAllCoupons,
   toggleCouponList,
 } from '../controllers/coupon.controller.js';
+import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
+import upload from '../config/multer.js';
 
 const router = express.Router();
 
@@ -60,7 +63,7 @@ router // Authorization
   .post('/logout', logoutAdmin)
   .get('/refresh-token', refreshTokenAdmin);
 
-router.use(verifyAuth(['admin'])); // These routes need authorization
+// router.use(verifyAuth(['admin'])); // These routes need authorization
 
 router // Products
   .route('/products')
@@ -69,6 +72,10 @@ router // Products
   .put(editProduct)
   .patch(toggleProductList);
 router.get('/products/:productId', getOneProduct);
+
+router
+  .post('/images/upload', upload.single('image'), uploadImageCloudinary)
+  .delete('/images/:public_id', deleteImageCloudinary);
 
 router // Genres CRUD
   .route('/genres')

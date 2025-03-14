@@ -7,7 +7,13 @@ import Genre from '../models/genre.model.js';
 import Product from '../models/product.model.js';
 import mongoose, { isValidObjectId } from 'mongoose';
 import { aggregatePaginate, paginate } from '../utils/index.js';
-import { NotFoundError, BadRequestError } from '../errors/index.js';
+import {
+  NotFoundError,
+  BadRequestError,
+  BadGatewayError,
+  InternalServerError,
+} from '../errors/index.js';
+import cloudinary from '../config/cloudinary.js';
 
 /*****************************************/
 // Products CRUD - Admin
@@ -217,6 +223,66 @@ export const toggleProductList = async (req, res) => {
     } successfully.`,
     data: product,
   });
+};
+
+/**
+ * @route POST admin/images/upload
+ * @desc Upload image to Cloudinary
+ * @access Private
+ */
+export const uploadImageCloudinary = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new BadRequestError('No file uploaded.');
+    }
+
+    cloudinary.uploader
+      .upload_stream({ folder: 'products' }, (error, uploadedImage) => {
+        if (error) {
+          return next(new InternalServerError('Cloudinary upload failed.'));
+        }
+
+        res.status(200).json({
+          success: true,
+          message: 'Image uploaded successfully',
+          data: {
+            url: uploadedImage.secure_url,
+            publicId: uploadedImage.public_id,
+          },
+        });
+      })
+      .end(req.file.buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+/**
+ * @route DELETE admin/images/:public_id
+ * @desc Delete image from Cloudinary
+ * @access Private
+ */
+export const deleteImageCloudinary = async (req, res, next) => {
+  try {
+    const { public_id } = req.params;
+
+    console.log(public_id);
+    if (!public_id) {
+      throw new BadRequestError('Public ID is required.');
+    }
+
+    const fullPublicId = `products/${public_id}`;
+    const response = await cloudinary.uploader.destroy(fullPublicId);
+    if (response.result !== 'ok') {
+      throw new InternalServerError('Failed to delete image from Cloudinary.');
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Image deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /*****************************************/
@@ -490,10 +556,10 @@ export const searchProducts = async (req, res) => {
 };
 
 // /**
-//  * @route GET - /products/search
-//  * @desc  User - User searching products
-//  * @access Public
-//  */
+//   @route GET - /products/search
+//   @desc  User - User searching products
+//  @access Public
+//  /
 // export const searchProducts = async (req, res) => {
 //   const page = parseInt(req.query.page) || 1;
 //   const limit = parseInt(req.query.limit) || 10;

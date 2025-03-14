@@ -273,8 +273,8 @@ export const getSalesReport = async (req, res) => {
     { $sort: { _id: 1 } },
   ]);
 
-  // Get best-selling categories
-  const categoryData = await Order.aggregate([
+  // Get best-selling genres
+  const bestSellingGenres = await Order.aggregate([
     { $match: filter },
     { $unwind: '$orderItems' },
     {
@@ -399,7 +399,7 @@ export const getSalesReport = async (req, res) => {
       revenueData: salesReport,
       bestSellingProducts,
       bestSellingBrands,
-      categoryData,
+      bestSellingGenres,
     },
   });
 };
