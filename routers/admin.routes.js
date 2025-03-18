@@ -23,12 +23,8 @@ import {
   toggleBrandList,
 } from '../controllers/brand.controller.js';
 import {
-  generateSalesExcel,
-  generateSalesPDF,
   getAllUsers,
   getOneUser,
-  getSalesData,
-  getSalesReport,
   loginAdmin,
   logoutAdmin,
   refreshTokenAdmin,
@@ -55,6 +51,12 @@ import {
 } from '../controllers/coupon.controller.js';
 import { verifyAuth } from '../middlewares/verifyAuth.middleware.js';
 import upload from '../config/multer.js';
+import {
+  generateSalesPDF,
+  generateSalesExcel,
+  getSalesData,
+  getSalesReport,
+} from '../controllers/sales.controller.js';
 
 const router = express.Router();
 
@@ -128,9 +130,9 @@ router
   .patch(toggleCouponList);
 
 router // Sales Reports
-  .get('/reports/sales', getSalesReport)
-  .get('/reports/sales/data', getSalesData)
-  .get('/reports/sales/excel', generateSalesExcel)
-  .get('/reports/sales/pdf', generateSalesPDF);
+  .get('/sales', getSalesReport)
+  .get('/sales/data', getSalesData)
+  .get('/sales/excel', generateSalesExcel)
+  .get('/sales/pdf', generateSalesPDF);
 
 export default router;

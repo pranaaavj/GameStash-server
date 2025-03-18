@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import Offer from '../models/offer.model.js';
+import { selectBestOfferForProduct } from '../utils/bestOfferForProduct.js';
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -96,5 +98,23 @@ ProductSchema.index({ price: 1, isActive: 1 }); // Sorting/filtering active prod
 ProductSchema.index({ averageRating: -1, isActive: 1 }); // Sorting/filtering active products by ratings
 ProductSchema.index({ genre: 1, isActive: 1 }); // Filtering active products by genre
 ProductSchema.index({ brand: 1, isActive: 1 });
+
+ProductSchema.pre('save', async function (next) {
+  if (this.isNew) {
+    const brandOffers = await Offer.find({
+      type: 'Brand',
+      targetId: this.brand,
+      isActive: true,
+    });
+
+    if (brandOffers.length) {
+      this.applicableOffers = brandOffers.map((offer) => offer._id);
+
+      await selectBestOfferForProduct(this._id);
+    }
+  }
+
+  next();
+});
 
 export default mongoose.model('Product', ProductSchema);

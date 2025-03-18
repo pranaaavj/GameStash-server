@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Report</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    .header {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .summary-table,
+    .order-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .summary-table td,
+    .order-table td,
+    .order-table th {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .summary-table td {
+      font-weight: bold;
+    }
+
+    .order-table th {
+      background-color: #f8f8f8;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 12px;
+      color: gray;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">Sales Report</div>
+
+  <table class="summary-table">
+    <tr>
+      <td>Total Orders:</td>
+      <td>{{totalOrders}}</td>
+    </tr>
+    <tr>
+      <td>Total Sales:</td>
+      <td>₹{{totalSales}}</td>
+    </tr>
+    <tr>
+      <td>Total Discounts:</td>
+      <td>₹{{totalDiscounts}}</td>
+    </tr>
+    <tr>
+      <td>Total Coupon Discounts:</td>
+      <td>₹{{totalCouponDiscounts}}</td>
+    </tr>
+    <tr>
+      <td>Total Shipping Charges:</td>
+      <td>₹{{totalShippingCharges}}</td>
+    </tr>
+    <tr>
+      <td>Net Revenue:</td>
+      <td>₹{{netRevenue}}</td>
+    </tr>
+  </table>
+
+  <table class="order-table">
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Customer</th>
+        <th>Order Date</th>
+        <th>Total</th>
+        <th>Discount</th>
+        <th>Coupon</th>
+        <th>Net Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each orders}}
+      <tr>
+        <td>{{this.orderId}}</td>
+        <td>{{this.customer}}</td>
+        <td>{{this.orderDate}}</td>
+        <td>₹{{this.totalOrderAmount}}</td>
+        <td>₹{{this.discount}}</td>
+        <td>₹{{this.couponDiscount}}</td>
+        <td>₹{{this.netTotal}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="footer">Generated on {{currentDate}}</div>
+</body>
+
+</html>

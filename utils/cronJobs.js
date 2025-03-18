@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import Offer from '../models/offer.model.js';
+import Coupon from '../models/coupon.model.js';
 import Product from '../models/product.model.js';
 import { selectBestOfferForProduct } from './bestOfferForProduct.js';
 
@@ -66,4 +67,20 @@ export const expiredOffersJob = () => {
   });
 };
 
+// export const expiredCouponsJob = () => {
+//   cron.schedule('0 0 * * *', async () => {
+//     const currentTime = new Date();
+
+//     const result = await Coupon.updateMany(
+//       { endDate: { $lt: currentTime }, isActive: true },
+//       { isActive: false }
+//     );
+
+//     if (result.modifiedCount > 0) {
+//       console.log(`Deactivated ${result.modifiedCount} expired coupons.`);
+//     }
+//   });
+// };
+
 expiredOffersJob();
+// expiredCouponsJob();

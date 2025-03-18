@@ -3,6 +3,7 @@ export { paginate } from './paginate.js';
 export { sendEmail } from './sendEmail.js';
 export { generateOtp } from './generateOtp.js';
 
+export { generateSalesData } from './generateSalesData.js';
 export { aggregatePaginate } from './aggregatePaginate.js';
 export { createRazorpayOrder } from './createRazorpayOrder.js';
 export { selectBestOfferForProduct } from './bestOfferForProduct.js';

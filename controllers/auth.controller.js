@@ -201,11 +201,12 @@ export const refreshToken = async (req, res) => {
   );
 
   const user = await User.findById(decoded?.userId);
-  if (!user)
+  if (!user) {
     throw new ForbiddenError('Invalid refresh token, You are not authorized.');
+  }
 
   if (user.status === 'blocked') {
-    throw new ForbiddenError('User has been blocked');
+    throw new ForbiddenError('User has been blocked.');
   }
 
   const accessToken = await createAccessToken(user);
