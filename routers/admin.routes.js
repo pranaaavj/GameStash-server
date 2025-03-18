@@ -106,8 +106,8 @@ router // Order CRUD
   .get(getAllOrders);
 router
   .route('/order/:orderId')
-  .patch(updateOrderStatus)
-  .put(requestReturnAdmin);
+  .put(requestReturnAdmin)
+  .patch(updateOrderStatus);
 
 router // Offer CRUD
   .route('/offers')

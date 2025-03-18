@@ -87,13 +87,17 @@ const OrderSchema = new mongoose.Schema(
     shippingAddress: AddressSchema,
     paymentMethod: {
       type: String,
-      enum: ['Wallet', 'Cash on Delivery', 'Razorpay', 'UPI'],
+      enum: ['Wallet', 'Cash on Delivery', 'Razorpay'],
       required: true,
     },
     paymentStatus: {
       type: String,
       enum: ['Pending', 'Paid', 'Failed'],
       default: 'Pending',
+    },
+    razorpayOrderId: {
+      type: String,
+      default: null,
     },
     orderStatus: {
       type: String,
@@ -124,15 +128,6 @@ const OrderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// OrderSchema.pre('save', function (next) {
-//   if (!this.deliveryBy && this.orderStatus === 'Shipped') {
-//     const deliveryDate = new Date();
-//     deliveryDate.setDate(deliveryDate.getDate() + 5); // Set delivery date to 5 days after shipping
-//     this.deliveryBy = deliveryDate;
-//   }
-//   next();
-// });
 
 OrderSchema.pre('save', function (next) {
   const statuses = this.orderItems.map((item) => item.status);

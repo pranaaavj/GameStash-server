@@ -36,6 +36,8 @@ import {
   placeOrder,
   getUserOrder,
   verifyRazorpay,
+  retryPayment,
+  markPaymentAsFailed,
 } from '../controllers/order.controller.js';
 import { getBrandsUser } from '../controllers/brand.controller.js';
 import { getGenresUser } from '../controllers/genre.controller.js';
@@ -94,11 +96,15 @@ router // Order functionality
   .post(placeOrder)
   .get(getUserOrders);
 router
+  .route('/order/razorpay/:orderId')
+  .post(verifyRazorpay)
+  .patch(markPaymentAsFailed)
+  .put(retryPayment);
+router
   .route('/order/:orderId')
   .get(getUserOrder)
   .patch(requestReturnOrder)
   .put(cancelOrder);
-router.post('/order/razorpay', verifyRazorpay);
 
 router // Wallet functionality
   .route('/wallet')

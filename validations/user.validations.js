@@ -115,6 +115,7 @@ export const placeOrderSchema = Joi.object({
   }),
 }).unknown(true);
 
+// Verify razorpay schema
 export const verifyRazorpaySchema = Joi.object({
   razorpayOrderId: Joi.string().trim().required().messages({
     'string.empty': 'Razorpay Order ID is required.',
@@ -127,27 +128,5 @@ export const verifyRazorpaySchema = Joi.object({
   signature: Joi.string().trim().required().messages({
     'string.empty': 'Payment signature is required.',
     'any.required': 'Payment signature is required.',
-  }),
-  orderItems: Joi.array().items(orderItemSchema).min(1).required().messages({
-    'array.base': 'Order items must be an array.',
-    'array.min': 'At least one order item is required.',
-    'any.required': 'Order items are required.',
-  }),
-  shippingAddress: Joi.string().trim().required().messages({
-    'string.empty': 'Shipping address is required.',
-    'any.required': 'Shipping address is required.',
-  }),
-  paymentMethod: Joi.string()
-    .valid('Wallet', 'UPI', 'Cash on Delivery', 'Credit Card', 'Razorpay')
-    .required()
-    .messages({
-      'any.only':
-        'Payment method must be one of Wallet, UPI, Cash on Delivery, Credit Card, or Razorpay.',
-      'any.required': 'Payment method is required.',
-    }),
-  couponCode: Joi.string().optional().allow(null),
-  couponDiscount: Joi.number().min(0).optional().messages({
-    'number.base': 'Coupon discount must be a number.',
-    'number.min': 'Coupon discount cannot be negative.',
   }),
 }).unknown(true);
