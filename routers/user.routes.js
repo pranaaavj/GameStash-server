@@ -53,6 +53,7 @@ import {
   moveToCart,
   removeFromWishlist,
 } from '../controllers/wishlist.controller.js';
+import { getRecommendations } from '../controllers/recommend.controller.js';
 
 const router = express.Router();
 
@@ -120,5 +121,7 @@ router // Wishlist functionality
   .post(addToWishlist);
 router.delete('/wishlist/:productId', removeFromWishlist);
 router.post('/wishlist/:productId/cart', moveToCart);
+
+router.get('/recommendations', getRecommendations);
 
 export default router;

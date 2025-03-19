@@ -10,7 +10,6 @@ import { aggregatePaginate, paginate } from '../utils/index.js';
 import {
   NotFoundError,
   BadRequestError,
-  BadGatewayError,
   InternalServerError,
 } from '../errors/index.js';
 import cloudinary from '../config/cloudinary.js';

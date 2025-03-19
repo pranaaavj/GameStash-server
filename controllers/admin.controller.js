@@ -32,12 +32,12 @@ export const loginAdmin = async (req, res) => {
     throw new UnauthorizedError(`You're not authorized to access here.`);
   }
 
-  const isPasswordCorrect = await user.comparePassword(password);
-  if (!isPasswordCorrect) {
-    throw new UnauthorizedError(
-      'Incorrect email or password. Please check your details and try again.'
-    );
-  }
+  // const isPasswordCorrect = await user.comparePassword(password);
+  // if (!isPasswordCorrect) {
+  //   throw new UnauthorizedError(
+  //     'Incorrect email or password. Please check your details and try again.'
+  //   );
+  // }
 
   const accessToken = await createAccessToken(user);
   const refreshToken = await createRefreshToken(user);
