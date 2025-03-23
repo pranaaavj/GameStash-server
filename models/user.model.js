@@ -33,6 +33,16 @@ const UserSchema = new mongoose.Schema(
       enum: ['active', 'blocked', 'pending'],
       default: 'active',
     },
+    referralCode: {
+      type: String,
+      unique: true,
+      default: null,
+    },
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     role: {
       type: String,
       enum: ['user', 'admin'],

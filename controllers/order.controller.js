@@ -17,6 +17,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '../errors/index.js';
+import PDFDocument from 'pdfkit';
 
 /*****************************************/
 // Orders - User
@@ -552,6 +553,215 @@ export const requestReturnOrder = async (req, res) => {
     message: 'Return request has been sent.',
     data: order,
   });
+};
+
+/**
+ * @route GET - user/order
+ * @desc  User - Get all orders
+ * @access Private
+ */
+export const generateInvoicePDF = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId)
+      .populate('user')
+      .populate('orderItems.product');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const doc = new PDFDocument({
+      margin: 50,
+      size: 'A4',
+      layout: 'portrait',
+      font: 'Helvetica',
+      bufferPages: true,
+    });
+
+    // Set up response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="invoice_${orderId}.pdf"`
+    );
+    doc.pipe(res);
+
+    // Header Section
+    let y = 45;
+    doc
+      // .image('public/images/logo.png', 50, y, { width: 50 })
+      .fillColor('#2c3e50')
+      .fontSize(20)
+      .font('Helvetica-Bold')
+      .text('INVOICE', 400, y, { align: 'right' });
+
+    // Invoice Details
+    doc
+      .fontSize(10)
+      .fillColor('#666666')
+      .text(`Invoice #: ${orderId.slice(-8)}`, 400, y + 30, { align: 'right' })
+      .text(
+        `Date: ${order.placedAt.toLocaleDateString('en-IN')}`,
+        400,
+        y + 45,
+        {
+          align: 'right',
+        }
+      );
+
+    // Company and Customer Info
+    y = 120;
+    const companyInfo = {
+      name: 'Your Company Name',
+      address: ['123 Business Street', 'City, State', 'PIN: 123456'],
+      contacts: ['Phone: +91 12345 67890', 'email@company.com'],
+    };
+
+    doc
+      .font('Helvetica-Bold')
+      .fillColor('#2c3e50')
+      .text('From:', 50, y)
+      .font('Helvetica')
+      .fillColor('#333333');
+
+    companyInfo.address.forEach((line, i) => {
+      doc.text(line, 50, y + 15 + i * 15);
+    });
+    companyInfo.contacts.forEach((line, i) => {
+      doc.text(line, 50, y + 60 + i * 15);
+    });
+
+    // Bill To Section
+    const customerAddress = [
+      order.user?.name || 'N/A',
+      order.shippingAddress?.addressLine || 'N/A',
+      `${order.shippingAddress?.city || 'N/A'}, ${
+        order.shippingAddress?.state || 'N/A'
+      } ${order.shippingAddress?.pinCode || ''}`,
+      `Phone: ${order.user?.phone || 'N/A'}`,
+    ];
+
+    doc
+      .font('Helvetica-Bold')
+      .fillColor('#2c3e50')
+      .text('Bill To:', 300, y)
+      .font('Helvetica')
+      .fillColor('#333333');
+
+    customerAddress.forEach((line, i) => {
+      doc.text(line, 300, y + 15 + i * 15);
+    });
+
+    // Order Items Table
+    y = 240;
+    const columnWidths = [250, 80, 80, 80];
+    const alignments = ['left', 'right', 'right', 'right'];
+
+    // Table Header
+    doc
+      .rect(50, y, 500, 20)
+      .fill('#2c3e50')
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor('#ffffff');
+
+    ['Item', 'Price', 'Qty', 'Total'].forEach((text, i) => {
+      const x =
+        i === 0
+          ? 55
+          : 50 + columnWidths.slice(0, i).reduce((a, b) => a + b) + 5;
+      doc.text(text, x, y + 5, {
+        width: columnWidths[i] - 10,
+        align: alignments[i],
+      });
+    });
+
+    // Table Rows
+    y += 25;
+    order.orderItems.forEach((item, index) => {
+      if (y > doc.page.height - 100) {
+        doc.addPage();
+        y = 50;
+      }
+
+      const row = [
+        item.product.name.substring(0, 40),
+        `₹${item.price.toFixed(2)}`,
+        item.quantity.toString(),
+        `₹${item.totalPrice.toFixed(2)}`,
+      ];
+
+      if (index % 2 === 0) {
+        doc.rect(50, y - 5, 500, 20).fill('#f8f9fa');
+      }
+
+      row.forEach((text, i) => {
+        const x =
+          i === 0
+            ? 55
+            : 50 + columnWidths.slice(0, i).reduce((a, b) => a + b) + 5;
+        doc
+          .font('Helvetica')
+          .fontSize(9)
+          .fillColor('#333333')
+          .text(text, x, y, {
+            width: columnWidths[i] - 10,
+            align: alignments[i],
+          });
+      });
+
+      y += 20;
+    });
+
+    // Summary Section
+    y += 50;
+    const summaryLines = [
+      { label: 'Subtotal:', value: order.totalAmount },
+      { label: 'Discounts:', value: -order.totalDiscount },
+      { label: 'Coupon Discount:', value: -order.couponDiscount },
+      { label: 'Shipping:', value: 0 },
+      { label: 'Total:', value: order.finalPrice },
+    ];
+
+    summaryLines.forEach((line, i) => {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .fillColor('#2c3e50')
+        .text(line.label, 400, y + i * 20, { align: 'left' })
+        .text(`₹${Math.abs(line.value).toFixed(2)}`, 500, y + i * 20, {
+          align: 'left',
+          width: 80,
+        });
+    });
+
+    // Payment Information
+    y += 100;
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .fillColor('#666666')
+      .text(
+        `Payment Method: ${order.paymentMethod} | Status: ${order.paymentStatus}`,
+        50,
+        y
+      )
+      .text(`Order Status: ${order.orderStatus}`, 50, y + 20);
+
+    // Footer
+    doc
+      .fontSize(8)
+      .fillColor('#666666')
+      .text('Thank you for your business!', 50, doc.page.height - 50, {
+        align: 'center',
+      });
+
+    doc.end();
+  } catch (error) {
+    console.error('Invoice Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate invoice' });
+  }
 };
 
 /**

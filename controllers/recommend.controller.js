@@ -610,8 +610,6 @@ export const getRecommendations = async (req, res) => {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 10;
 
-    console.log('userId', userId);
-
     const recommendations = await generateRecommendations(userId, limit);
 
     // Format the response
@@ -630,7 +628,7 @@ export const getRecommendations = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Recommendations retrieved successfully',
-      recommendations: formattedRecommendations,
+      data: formattedRecommendations,
     });
   } catch (error) {
     console.error('❌ Error in recommendation API:', error);
@@ -746,12 +744,14 @@ export const trainRecommendationModel = async () => {
         inputShape: [6],
       })
     );
+
     model.add(
       tf.layers.dense({
         units: 16,
         activation: 'relu',
       })
     );
+
     model.add(
       tf.layers.dense({
         units: 1,

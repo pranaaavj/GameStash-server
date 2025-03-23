@@ -20,6 +20,7 @@ import {
 import Otp from '../models/otp.model.js';
 import User from '../models/user.model.js';
 import { admin } from '../utils/firebaseAdmin.js';
+import { generateReferralCode } from '../utils/index.js';
 
 /*****************************************/
 // Authorization
@@ -104,7 +105,6 @@ export const registerUser = async (req, res) => {
       abortEarly: false,
     });
 
-  // User exist is validated in the mongoose validation
   const userOtp = await Otp.findOne({ email });
   if (!userOtp?.otpVerified) {
     throw new UnauthorizedError('Please verify your email first.');
@@ -114,11 +114,14 @@ export const registerUser = async (req, res) => {
     _id: userOtp._id,
   });
 
+  let referralCode = generateReferralCode();
+
   const user = await User.create({
     name,
     email,
     password,
     phoneNumber,
+    referralCode,
     status: 'active',
   });
 
@@ -229,7 +232,6 @@ export const resetPassUser = async (req, res) => {
   });
 
   const correctOtp = await Otp.findOne({ email });
-
   if (!correctOtp?.otpVerified) {
     throw new UnauthorizedError('Please verify with OTP before proceeding.');
   }
@@ -240,6 +242,12 @@ export const resetPassUser = async (req, res) => {
       "This email isn't registered. Please register to continue."
     );
   }
+
+  const isPasswordSame = await user.comparePassword(password);
+  if (isPasswordSame) {
+    throw new BadRequestError('New password cannot be your old password.');
+  }
+
   user.password = password;
   await user.save();
 
@@ -278,12 +286,14 @@ export const sendOtpUser = async (req, res) => {
     );
   }
 
-  const otp = generateOtp();
-  const otpExist = await Otp.findOne({ otp });
+  let otp = generateOtp();
+  let otpExist = await Otp.findOne({ otp });
   while (otpExist) {
     otp = generateOtp();
     otpExist = await Otp.findOne({ otp });
   }
+
+  console.log(otp);
 
   await Otp.create({
     email,
@@ -366,8 +376,8 @@ export const resetOtpUser = async (req, res) => {
     );
   }
 
-  const newOtp = generateOtp();
-  const otpExist = await Otp.findOne({ newOtp });
+  let newOtp = generateOtp();
+  let otpExist = await Otp.findOne({ newOtp });
   while (otpExist) {
     newOtp = generateOtp();
     otpExist = await Otp.findOne({ newOtp });

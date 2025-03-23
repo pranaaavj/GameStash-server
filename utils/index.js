@@ -2,6 +2,7 @@ export { limiter } from './limiter.js';
 export { paginate } from './paginate.js';
 export { sendEmail } from './sendEmail.js';
 export { generateOtp } from './generateOtp.js';
+export { generateReferralCode } from './generateReferralCode.js';
 
 export { generateSalesData } from './generateSalesData.js';
 export { aggregatePaginate } from './aggregatePaginate.js';

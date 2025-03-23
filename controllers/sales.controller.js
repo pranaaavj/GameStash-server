@@ -5,8 +5,6 @@ import fs from 'fs';
 import Order from '../models/order.model.js';
 import { generateSalesData } from '../utils/generateSalesData.js';
 import User from '../models/user.model.js';
-// import handlebars from 'handlebars';
-// import puppeteer from 'puppeteer';
 import { paginate } from '../utils/paginate.js';
 
 /**
@@ -296,8 +294,6 @@ export const generateSalesPDF = async (req, res) => {
       period
     );
 
-    console.log(salesData);
-
     const doc = new PDFDocument({
       margin: 50,
       size: 'A4',
@@ -377,19 +373,28 @@ export const generateSalesPDF = async (req, res) => {
     // Table Section
     const pageWidth = doc.page.width - 100;
     const columnWidths = [
-      Math.round(pageWidth * 0.2), // Order ID (98px)
-      Math.round(pageWidth * 0.2), // Customer (148px)
-      Math.round(pageWidth * 0.2), // Date (82px)
-      Math.round(pageWidth * 0.2), // Total (110px)
-      Math.round(pageWidth * 0.2), // Net Total (110px)
+      Math.round(pageWidth * 0.12), // Order ID (98px)
+      Math.round(pageWidth * 0.18), // Customer (148px)
+      Math.round(pageWidth * 0.14), // Date (82px)
+      Math.round(pageWidth * 0.14), // Total (110px)
+      Math.round(pageWidth * 0.14), // Total (110px)
+      Math.round(pageWidth * 0.14), // Total (110px)
+      Math.round(pageWidth * 0.15), // Net Total (110px)
     ];
 
-    const headers = ['Order ID', 'Customer', 'Date', 'Total', 'Net Total'].map(
-      (h) => h.trim()
-    );
-    const alignments = ['left', 'left', 'left', 'left', 'left'];
+    const headers = [
+      'Order ID',
+      'Customer',
+      'Date',
+      'Discount',
+      'Coupon',
+      'Total',
+      'Net Total',
+    ].map((h) => h.trim());
+    const alignments = ['left', 'left', 'left', 'left', 'left', 'left', 'left'];
 
     let currentY = summaryY + 40; // Tighter spacing
+
     currentY += drawTableRow(
       doc,
       currentY,
@@ -417,14 +422,12 @@ export const generateSalesPDF = async (req, res) => {
         );
       }
 
-      console.log('salesData: ', salesData);
-
       const rowData = {
         data: [
           order.orderId ? order.orderId.slice(-8) : 'N/A', // Order ID
           order.customer
-            ? order.customer.substring(0, 22).trim() +
-              (order.customer.length > 22 ? '...' : '')
+            ? order.customer.substring(0, 16).trim() +
+              (order.customer.length > 16 ? '...' : '')
             : 'N/A', // Customer Name
           order.orderDate
             ? new Date(order.orderDate).toLocaleDateString('en-IN', {
@@ -433,6 +436,12 @@ export const generateSalesPDF = async (req, res) => {
                 year: '2-digit',
               })
             : 'N/A', // Date
+          order.discount !== undefined
+            ? `₹${order.discount.toFixed(2)}`
+            : '₹0.00', // Total Amount
+          order.couponDiscount !== undefined
+            ? `₹${order.couponDiscount.toFixed(2)}`
+            : '₹0.00', // Total Amount
           order.totalOrderAmount !== undefined
             ? `₹${order.totalOrderAmount.toFixed(2)}`
             : '₹0.00', // Total Amount
@@ -467,6 +476,7 @@ export const generateSalesPDF = async (req, res) => {
     res.status(500).json({ error: 'Failed to generate PDF report' });
   }
 };
+
 /**
  * @route GET - /admin/reports/sales/excel
  * @desc  Admin - Generate Sales Report (Excel)

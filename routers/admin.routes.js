@@ -65,7 +65,7 @@ router // Authorization
   .post('/logout', logoutAdmin)
   .get('/refresh-token', refreshTokenAdmin);
 
-// router.use(verifyAuth(['admin'])); // These routes need authorization
+router.use(verifyAuth(['admin'])); // These routes need authorization
 
 router // Products
   .route('/products')

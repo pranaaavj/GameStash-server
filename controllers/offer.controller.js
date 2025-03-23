@@ -133,7 +133,8 @@ export const editOffer = async (req, res) => {
     type !== offer.type ||
     targetId !== String(offer.targetId) ||
     discountValue !== offer.discountValue ||
-    discountType !== offer.discountType;
+    discountType !== offer.discountType ||
+    startDate !== offer.startDate;
 
   if (isTargetChanged) {
     targetExists =

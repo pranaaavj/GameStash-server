@@ -49,7 +49,7 @@ const seedDatabase = async () => {
     // Create Genres
     const genreNames = ['Action', 'RPG', 'Shooter', 'Adventure', 'Strategy'];
     const genres = await Genre.insertMany(
-      genreNames.map((name) => ({ name, isActive: true }))
+      genreNames.map((name) => ({ name, description: '', isActive: true }))
     );
 
     // Create Users

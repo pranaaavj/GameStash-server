@@ -17,13 +17,15 @@ export const getCart = async (req, res) => {
 
   const cart = await Cart.findOne({ user: userId }).populate({
     path: 'items.product',
-    // match: { isActive: true },
+    match: { isActive: true },
     populate: { path: 'bestOffer' },
   });
 
   if (!cart) {
     throw new NotFoundError('Cart not found');
   }
+
+  cart.items = cart.items.filter((item) => item.product !== null);
 
   res.status(200).json({
     success: true,

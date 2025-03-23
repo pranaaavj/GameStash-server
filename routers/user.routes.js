@@ -38,6 +38,7 @@ import {
   verifyRazorpay,
   retryPayment,
   markPaymentAsFailed,
+  generateInvoicePDF,
 } from '../controllers/order.controller.js';
 import { getBrandsUser } from '../controllers/brand.controller.js';
 import { getGenresUser } from '../controllers/genre.controller.js';
@@ -54,6 +55,7 @@ import {
   removeFromWishlist,
 } from '../controllers/wishlist.controller.js';
 import { getRecommendations } from '../controllers/recommend.controller.js';
+import { applyReferralCode } from '../controllers/referral.controller.js';
 
 const router = express.Router();
 
@@ -96,6 +98,7 @@ router // Order functionality
   .route('/order')
   .post(placeOrder)
   .get(getUserOrders);
+router.post('/order/:orderId/invoice', generateInvoicePDF);
 router
   .route('/order/razorpay/:orderId')
   .post(verifyRazorpay)
@@ -104,6 +107,7 @@ router
 router
   .route('/order/:orderId')
   .get(getUserOrder)
+  .post(generateInvoicePDF)
   .patch(requestReturnOrder)
   .put(cancelOrder);
 
@@ -123,5 +127,7 @@ router.delete('/wishlist/:productId', removeFromWishlist);
 router.post('/wishlist/:productId/cart', moveToCart);
 
 router.get('/recommendations', getRecommendations);
+
+router.post('/referral/apply', applyReferralCode);
 
 export default router;
