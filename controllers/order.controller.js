@@ -40,41 +40,42 @@ export const placeOrder = async (req, res) => {
   let appliedCoupon = null;
   let totalDiscount = 0;
 
+  const orderItemsSnapshot = [];
+
   for (const item of orderItems) {
     const product = await Product.findById(item.product).populate('bestOffer');
 
-    if (!product) {
+    if (!product)
       throw new NotFoundError(`Product not found for ID: ${item.product}`);
-    }
 
-    if (product.stock < item.quantity) {
+    if (product.stock < item.quantity)
       throw new BadRequestError(
         `Insufficient stock for product: ${product.name}`
       );
-    }
 
     let itemDiscount = 0;
-    let effectivePrice = product.price;
-
     if (product.bestOffer) {
-      if (product.bestOffer.discountType === 'percentage') {
-        itemDiscount = (product.price * product.bestOffer.discountValue) / 100;
-      } else {
-        itemDiscount = product.bestOffer.discountValue;
-      }
+      itemDiscount =
+        product.bestOffer.discountType === 'percentage'
+          ? (product.price * product.bestOffer.discountValue) / 100
+          : product.bestOffer.discountValue;
 
       itemDiscount = Math.min(itemDiscount, product.price);
-      effectivePrice = product.price - itemDiscount;
     }
 
+    subtotal += product.price * item.quantity;
     totalDiscount += itemDiscount * item.quantity;
 
-    const itemTotalPrice = effectivePrice * item.quantity;
-    item.totalPrice = itemTotalPrice;
-    subtotal += itemTotalPrice;
+    orderItemsSnapshot.push({
+      product: {
+        ...product.toObject(),
+        discountedPrice: product.price - itemDiscount,
+      },
+      quantity: item.quantity,
+      totalPrice: (product.price - itemDiscount) * item.quantity,
+    });
 
     product.stock -= item.quantity;
-
     await product.save();
   }
 
@@ -145,7 +146,7 @@ export const placeOrder = async (req, res) => {
 
   const order = await Order.create({
     user: userId,
-    orderItems,
+    orderItems: orderItemsSnapshot,
     shippingAddress: currentAddress,
     paymentMethod,
     couponCode: appliedCoupon || null,
@@ -158,11 +159,17 @@ export const placeOrder = async (req, res) => {
 
   await Cart.deleteOne({ user: userId });
 
+  console.log('Final Price', finalPrice);
+  console.log('total Discount', totalDiscount);
+  console.log('subtotal', subtotal);
+
   if (paymentMethod === 'Razorpay') {
     const razorpayOrder = await createRazorpayOrder(finalPrice);
 
     order.razorpayOrderId = razorpayOrder.id;
     await order.save();
+
+    console.log('Razorpay amount:', razorpayOrder);
 
     return res.status(200).json({
       success: true,
@@ -778,14 +785,15 @@ export const getUserOrders = async (req, res) => {
   const queryOptions = {
     filter: { user: userId },
     sort: { updatedAt: -1 },
-    populate: [{ path: 'orderItems.product', select: 'name price images' }],
+    populate: [
+      {
+        path: 'orderItems.product',
+        select: 'name price images discountedPrice',
+      },
+    ],
   };
 
   const orders = await paginate(Order, page, limit, queryOptions);
-
-  if (orders?.result?.length === 0) {
-    throw new NotFoundError('No orders found for this user');
-  }
 
   res.status(200).json({
     success: true,

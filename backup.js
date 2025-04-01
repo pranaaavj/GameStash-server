@@ -98,3 +98,18 @@
 //   }).label('System Requirements'),
 // });
 
+// test-mongo.js
+import mongoose from 'mongoose';
+
+const uri =
+  'mongodb+srv://pranavdev:pranav1234@pranavs-cluster.i81ti.mongodb.net/GameStash?retryWrites=true&w=majority&appName=Pranavs-Cluster';
+
+mongoose
+  .connect(uri)
+  .then(() => {
+    console.log('✅ Connected to MongoDB Atlas');
+    return mongoose.disconnect();
+  })
+  .catch((err) => {
+    console.error('❌ Connection error:', err);
+  });

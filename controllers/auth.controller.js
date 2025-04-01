@@ -47,12 +47,12 @@ export const loginUser = async (req, res) => {
     throw new ForbiddenError('User has been blocked');
   }
 
-  // const isPasswordCorrect = await user.comparePassword(password);
-  // if (!isPasswordCorrect) {
-  //   throw new UnauthorizedError(
-  //     'Incorrect email or password. Please check your details and try again.'
-  //   );
-  // }
+  const isPasswordCorrect = await user.comparePassword(password);
+  if (!isPasswordCorrect) {
+    throw new UnauthorizedError(
+      'Incorrect email or password. Please check your details and try again.'
+    );
+  }
 
   const accessToken = await createAccessToken(user);
   const refreshToken = await createRefreshToken(user);
@@ -85,7 +85,7 @@ export const logoutUser = (req, res) => {
     .clearCookie('userJwt', {
       httpOnly: true,
       sameSite: 'none',
-      secure: process.env.NODE_ENV !== 'development',
+      secure: true,
     })
     .json({
       success: true,
@@ -114,7 +114,7 @@ export const registerUser = async (req, res) => {
     _id: userOtp._id,
   });
 
-  let referralCode = generateReferralCode();
+  let referralCode = await generateReferralCode();
 
   const user = await User.create({
     name,

@@ -8,4 +8,5 @@ export const generateReferralCode = async () => {
     referralCode = crypto.randomBytes(6).toString('hex');
     isReferralCodeExist = await User.findOne({ referralCode });
   }
+  return referralCode;
 };

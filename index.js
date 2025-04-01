@@ -22,9 +22,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Delay for development
-// app.use((req, res, next) => {
-//   setTimeout(() => next(), 1000);
-// });
+app.use((req, res, next) => {
+  setTimeout(() => next(), 2000);
+});
 
 // Routes
 app.use('/api', router);

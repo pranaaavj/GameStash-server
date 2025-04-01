@@ -339,7 +339,7 @@ export const generateRecommendations = async (userId, limit = 10) => {
     const userInteractions = await fetchUserInteractions(userId);
     console.log(userInteractions);
     if (!userInteractions || userInteractions.length === 0) {
-      console.log('⚠️ No user interactions found. Returning popular products.');
+      // console.log('⚠️ No user interactions found. Returning popular products.');
       return await getPopularProducts(limit);
     }
 
@@ -378,9 +378,9 @@ export const generateRecommendations = async (userId, limit = 10) => {
 
     // Step 3: Preprocess user data
     const userFeatures = preprocessUserData(userInteractions, mappings);
-    console.log(
-      `✅ Processed ${userFeatures.length} interactions for prediction`
-    );
+    // console.log(
+    //   `✅ Processed ${userFeatures.length} interactions for prediction`
+    // );
 
     // Step 4: Load model (or train if needed)
     let model = await loadModel();

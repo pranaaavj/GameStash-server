@@ -290,16 +290,28 @@ export const deleteImageCloudinary = async (req, res, next) => {
 
 /**
  * @route GET - user/products
- * @desc  User - Listing all  products
+ * @desc  User - Listing all products
  * @access Public
  */
 export const getProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
+  const type = req.query.type || 'latest';
+
+  const filter = { isActive: true };
+  let sort = { createdAt: -1 };
+
+  if (type === 'toprated') {
+    sort = { averageRating: -1 };
+  } else if (type === 'discounted') {
+    filter.bestOffer = { $ne: null };
+    sort = { 'bestOffer.discountValue': -1 };
+  }
 
   // Custom query options
   const queryOptions = {
-    filter: { isActive: true },
+    filter,
+    sort,
     populate: [
       {
         from: 'genres',
@@ -327,10 +339,6 @@ export const getProducts = async (req, res) => {
 
   // Function to paginate the data
   const products = await aggregatePaginate(Product, page, limit, queryOptions);
-
-  if (products?.result?.length === 0) {
-    throw new NotFoundError('No active products found.');
-  }
 
   res.status(200).json({
     success: true,
@@ -402,10 +410,6 @@ export const getProductsByGenre = async (req, res) => {
   };
 
   const products = await paginate(Product, page, limit, queryOptions);
-
-  if (products?.result?.length === 0) {
-    throw new NotFoundError('No active products found for this genre.');
-  }
 
   res.status(200).json({
     success: true,

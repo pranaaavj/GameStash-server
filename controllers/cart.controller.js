@@ -15,17 +15,41 @@ import { NotFoundError, BadRequestError } from '../errors/index.js';
 export const getCart = async (req, res) => {
   const userId = req.user.id;
 
-  const cart = await Cart.findOne({ user: userId }).populate({
+  const cart = await Cart.findOneAndUpdate(
+    { user: userId },
+    { $setOnInsert: { user: userId, items: [], shipping: 0 } },
+    { new: true, upsert: true }
+  ).populate({
     path: 'items.product',
     match: { isActive: true },
     populate: { path: 'bestOffer' },
   });
 
-  if (!cart) {
-    throw new NotFoundError('Cart not found');
+  cart.items = cart.items.filter((item) => item.product !== null);
+
+  let subtotal = 0;
+  let discount = 0;
+
+  for (let item of cart.items) {
+    const { price, bestOffer } = item.product;
+    let itemDiscount = 0;
+
+    if (bestOffer) {
+      itemDiscount =
+        bestOffer.discountType === 'percentage'
+          ? (price * bestOffer.discountValue) / 100
+          : bestOffer.discountValue;
+
+      itemDiscount = Math.min(price, itemDiscount);
+    }
+
+    subtotal += price * item.quantity;
+    discount += itemDiscount * item.quantity;
   }
 
-  cart.items = cart.items.filter((item) => item.product !== null);
+  cart.total = subtotal + cart.shipping - discount;
+  cart.discount = discount;
+  await cart.save();
 
   res.status(200).json({
     success: true,

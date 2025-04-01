@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { v4 as uuid } from 'uuid';
 import Razorpay from 'razorpay';
 
