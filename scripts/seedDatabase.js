@@ -14,8 +14,7 @@ import Address from '../models/address.model.js';
 
 dotenv.config();
 
-const MONGO_URI =
-  'mongodb+srv://arceus:brototype1234@pranavs-cluster.i81ti.mongodb.net/GameStash';
+const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI);
 
