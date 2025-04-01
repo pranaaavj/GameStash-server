@@ -71,6 +71,7 @@ export const placeOrder = async (req, res) => {
         ...product.toObject(),
         discountedPrice: product.price - itemDiscount,
       },
+      price: product.price,
       quantity: item.quantity,
       totalPrice: (product.price - itemDiscount) * item.quantity,
     });
