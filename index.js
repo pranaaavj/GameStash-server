@@ -27,6 +27,10 @@ app.use(express.urlencoded({ extended: true }));
 //   setTimeout(() => next(), 4000);
 // });
 
+app.get('/api/home', (req, res) => {
+  res.status(200).json({ message: 'Welcome to GameStash' });
+});
+
 // Routes
 app.use('/api', router);
 
