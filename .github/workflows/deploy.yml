@@ -27,3 +27,16 @@ jobs:
             git pull origin main
             pm2 restart index
           EOF
+
+      - name: Pull latest code
+        run: |
+          cd ~/GameStash-server
+          git reset --hard
+          git pull origin main
+
+      - name: Restart server
+        run: |
+          ssh ubuntu@3.7.212.223 << 'EOF'
+            cd ~/GameStash-server
+            pm2 restart index --update-env
+          EOF
