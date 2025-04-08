@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy Docker to EC2
 
 on:
   push:
@@ -10,21 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Setup SSH key
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 3.7.212.223 >> ~/.ssh/known_hosts
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH and Docker
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@3.7.212.223 << 'EOF'
             cd ~/GameStash-server
             git reset --hard
             git pull origin main
-            pm2 restart index --update-env
+
+            # Build and restart Docker container
+            docker stop gamestash || true
+            docker rm gamestash || true
+            docker build -t gamestash .
+            docker run -d --restart=always --name gamestash -p 3000:3000 --env-file .env gamestash
           EOF

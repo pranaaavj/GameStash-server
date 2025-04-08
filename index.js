@@ -16,20 +16,11 @@ const app = express();
 // Middlewares
 app.use(cors);
 app.use(cookieParser());
-app.use(limiter); // Rate limiter
+app.use(limiter);
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Delay for development
-// app.use((req, res, next) => {
-//   setTimeout(() => next(), 4000);
-// });
-
-app.get('/api/home', (req, res) => {
-  res.status(200).json({ message: 'Welcome to GameStash' });
-});
 
 // Routes
 app.use('/api', router);
