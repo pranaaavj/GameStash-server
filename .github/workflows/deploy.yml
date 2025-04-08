@@ -1,4 +1,4 @@
-name: Deploy Docker to EC2
+name: Deploy to EC2 with Docker
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup SSH
@@ -20,16 +20,24 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 3.7.212.223 >> ~/.ssh/known_hosts
 
-      - name: Deploy via SSH and Docker
+      - name: Deploy and restart Docker container
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@3.7.212.223 << 'EOF'
             cd ~/GameStash-server
-            git reset --hard
             git pull origin main
 
-            # Build and restart Docker container
-            docker stop gamestash || true
-            docker rm gamestash || true
-            docker build -t gamestash .
-            docker run -d --restart=always --name gamestash -p 3000:3000 --env-file .env gamestash
+            echo "Stopping old container (if any)..."
+            docker stop gamestash-backend || true
+            docker rm gamestash-backend || true
+
+            echo "Building new Docker image..."
+            docker build -t gamestash-backend .
+
+            echo "Starting new container..."
+            docker run -d \
+              --name gamestash-backend \
+              --env-file .env \
+              -p 3000:3000 \
+              --restart unless-stopped \
+              gamestash-backend
           EOF
