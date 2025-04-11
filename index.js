@@ -22,8 +22,6 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-console.log('CI/CD Pipeline working perfectly!');
-
 // Routes
 app.use('/api', router);
 
