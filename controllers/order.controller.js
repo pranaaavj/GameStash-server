@@ -69,8 +69,8 @@ export const placeOrder = async (req, res) => {
     orderItemsSnapshot.push({
       product: {
         ...product.toObject(),
-        discountedPrice: product.price - itemDiscount,
       },
+      discount: itemDiscount,
       price: product.price,
       quantity: item.quantity,
       totalPrice: (product.price - itemDiscount) * item.quantity,
@@ -145,6 +145,29 @@ export const placeOrder = async (req, res) => {
     throw new NotFoundError('Address not found');
   }
 
+  if (paymentMethod === 'Wallet') {
+    let wallet = await Wallet.findOne({ userId });
+
+    if (!wallet) {
+      wallet = await Wallet.create({ userId, transactions: [] });
+    }
+
+    if (wallet.balance < finalPrice) {
+      throw new BadRequestError('Insufficient wallet balance');
+    }
+
+    wallet.balance -= finalPrice;
+
+    wallet.transactions.push({
+      type: 'debit',
+      amount: finalPrice,
+      status: 'completed',
+      description: `Payment for order`,
+    });
+
+    await wallet.save();
+  }
+
   const order = await Order.create({
     user: userId,
     orderItems: orderItemsSnapshot,
@@ -160,17 +183,11 @@ export const placeOrder = async (req, res) => {
 
   await Cart.deleteOne({ user: userId });
 
-  console.log('Final Price', finalPrice);
-  console.log('total Discount', totalDiscount);
-  console.log('subtotal', subtotal);
-
   if (paymentMethod === 'Razorpay') {
     const razorpayOrder = await createRazorpayOrder(finalPrice);
 
     order.razorpayOrderId = razorpayOrder.id;
     await order.save();
-
-    console.log('Razorpay amount:', razorpayOrder);
 
     return res.status(200).json({
       success: true,
@@ -307,8 +324,30 @@ export const retryPayment = async (req, res) => {
     throw new BadRequestError('Invalid payment method.');
   }
 
+  const activeOrderItems = order.orderItems.filter(
+    (item) => item.status !== 'Cancelled'
+  );
+
+  const currentTotalAmount = activeOrderItems.reduce(
+    (sum, item) => sum + item.totalPrice,
+    0
+  );
+
+  let currentCouponDiscount = 0;
+  if (order.couponDiscount > 0 && order.totalAmount > 0) {
+    currentCouponDiscount =
+      (currentTotalAmount / order.totalAmount) * order.couponDiscount;
+
+    currentCouponDiscount = Math.round(currentCouponDiscount * 100) / 100;
+  }
+
+  const amountToCharge = Math.max(
+    0,
+    currentTotalAmount - currentCouponDiscount
+  );
+
   if (paymentMethod === 'Razorpay') {
-    const paymentResponse = await createRazorpayOrder(order.finalPrice);
+    const paymentResponse = await createRazorpayOrder(amountToCharge);
 
     order.razorpayOrderId = paymentResponse.id;
     order.paymentStatus = 'Pending';
@@ -327,9 +366,39 @@ export const retryPayment = async (req, res) => {
   }
 
   if (paymentMethod === 'Wallet') {
-    return res.status(400).json({
-      success: false,
-      message: 'Wallet payment is not yet implemented.',
+    let wallet = await Wallet.findOne({ userId });
+
+    if (!wallet) {
+      wallet = await Wallet.create({ userId, balance: 0, transactions: [] });
+    }
+
+    if (wallet.balance < amountToCharge) {
+      throw new BadRequestError('Insufficient wallet balance');
+    }
+
+    wallet.balance -= amountToCharge;
+
+    wallet.transactions.push({
+      type: 'debit',
+      amount: amountToCharge,
+      status: 'completed',
+      description: `Payment for order #${order._id.toString().slice(-6)}`,
+    });
+
+    await wallet.save();
+
+    order.paymentMethod = 'Wallet';
+    order.paymentStatus = 'Paid';
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment completed successfully using wallet balance.',
+      data: {
+        order,
+        originalAmount: order.finalPrice,
+        actualChargedAmount: amountToCharge,
+      },
     });
   }
 
@@ -381,6 +450,7 @@ export const cancelOrder = async (req, res) => {
       'Return Requested',
       'Return Rejected',
     ];
+
     if (invalidStatus.includes(orderItem.status)) {
       throw new BadRequestError(
         `Product is already ${orderItem.status.toLowerCase()} and cannot be cancelled.`
@@ -416,9 +486,10 @@ export const cancelOrder = async (req, res) => {
         type: 'credit',
         amount: refundAmount,
         status: 'completed',
+        description: `Refund amount of order ${order._id.toString().slice(-6)}`,
       });
 
-      wallet.balance += refundAmount;
+      wallet.balance += Number(refundAmount);
       order.refundedAmount += refundAmount;
 
       await wallet.save();
@@ -477,7 +548,7 @@ export const cancelOrder = async (req, res) => {
       status: 'completed',
     });
 
-    wallet.balance += order.finalPrice;
+    wallet.balance += Number(order.finalPrice);
     order.refundedAmount = order.finalPrice;
 
     await wallet.save();
@@ -905,7 +976,7 @@ export const updateOrderStatus = async (req, res) => {
       status: 'completed',
     });
 
-    wallet.balance += refundAmount;
+    wallet.balance += Number(refundAmount);
     order.refundedAmount = refundAmount;
 
     await wallet.save();
@@ -1011,9 +1082,12 @@ export const requestReturnAdmin = async (req, res) => {
       type: 'credit',
       amount: refundAmount,
       status: 'completed',
+      description: 'Return amount',
     });
 
-    wallet.balance += refundAmount;
+    order.refundedAmount += Number(refundAmount);
+
+    wallet.balance += Number(refundAmount);
     await wallet.save();
   } else if (action === 'reject') {
     orderItem.returnRequest.approved = false;

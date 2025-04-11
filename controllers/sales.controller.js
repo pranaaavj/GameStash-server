@@ -342,11 +342,11 @@ export const generateSalesPDF = async (req, res) => {
 
     const summaryData = [
       ['Total Orders:', summary.totalOrders.toString()],
-      ['Total Sales:', `₹${summary.totalSales.toFixed(2)}`],
-      ['Total Discounts:', `₹${summary.totalDiscounts.toFixed(2)}`],
-      ['Coupon Discounts:', `₹${summary.totalCouponDiscounts.toFixed(2)}`],
-      ['Shipping Charges:', `₹${summary.totalShippingCharges.toFixed(2)}`],
-      ['Net Revenue:', `₹${summary.netRevenue.toFixed(2)}`],
+      ['Total Sales:', `${summary.totalSales.toFixed(2)}`],
+      ['Total Discounts:', `${summary.totalDiscounts.toFixed(2)}`],
+      ['Coupon Discounts:', `${summary.totalCouponDiscounts.toFixed(2)}`],
+      ['Shipping Charges:', `${summary.totalShippingCharges.toFixed(2)}`],
+      ['Net Revenue:', `${summary.netRevenue.toFixed(2)}`],
     ];
 
     let summaryY = 160;
@@ -456,10 +456,6 @@ export const generateSalesPDF = async (req, res) => {
       if (index % 2 !== 0) {
         doc.rect(50, currentY, doc.page.width - 100, 18).fill('#f8f9fa');
       }
-
-      console.log('Headers Length:', headers.length);
-      console.log('Column Widths Length:', columnWidths.length);
-      console.log('Row Data Length:', rowData.data.length);
 
       currentY += drawTableRow(
         doc,

@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import router from './routers/index.routes.js';
 import express from 'express';
-import limiter from './utils/limiter.js';
+// import limiter from './utils/limiter.js';
 import connectDB from './config/database.js';
 import cookieParser from 'cookie-parser';
 import errorHandler from './middlewares/error.middleware.js';
@@ -16,7 +16,7 @@ const app = express();
 // Middlewares
 app.use(cors);
 app.use(cookieParser());
-app.use(limiter);
+// app.use(limiter);
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());

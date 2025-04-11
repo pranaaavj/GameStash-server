@@ -423,6 +423,53 @@ export const getProductsByGenre = async (req, res) => {
 };
 
 /**
+ * @route GET - /product/related
+ * @desc  User - Getting related products
+ * @access Public
+ */
+export const getRelatedProducts = async (req, res) => {
+  const { productId } = req.params;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  if (!productId) {
+    throw new BadRequestError('Product ID must be specified.');
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new NotFoundError('Product not found.');
+  }
+
+  const genreId = product.genre;
+
+  const queryOptions = {
+    filter: {
+      genre: genreId,
+      isActive: true,
+      _id: { $ne: productId },
+    },
+    populate: [
+      { path: 'genre', select: 'name isActive', match: { isActive: true } },
+      { path: 'brand', select: 'name isActive', match: { isActive: true } },
+    ],
+    sort: { updatedAt: -1 },
+  };
+
+  const products = await paginate(Product, page, limit, queryOptions);
+
+  res.status(200).json({
+    success: true,
+    message: 'Related products retrieved successfully.',
+    data: {
+      products: products.result,
+      totalPages: products.totalPages,
+      currentPage: products.currentPage,
+    },
+  });
+};
+
+/**
  * @route GET - /products/search
  * @desc  User - User searching products
  * @access Public

@@ -24,6 +24,10 @@ const walletSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
+        description: {
+          type: String,
+          default: null,
+        },
         razorpayPaymentId: {
           type: String,
           default: null,

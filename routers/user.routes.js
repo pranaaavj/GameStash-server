@@ -3,6 +3,7 @@ import {
   getProduct,
   getProducts,
   getProductsByGenre,
+  getRelatedProducts,
   searchProducts,
 } from '../controllers/product.controller.js';
 import {
@@ -62,6 +63,7 @@ const router = express.Router();
 router // User home products
   .get('/products', getProducts)
   .get('/products/search', searchProducts)
+  .get('/product/related/:productId', getRelatedProducts)
   .get('/product/:productId', getProduct)
   .get('/products/:genre', getProductsByGenre)
   .get('/brands', getBrandsUser)

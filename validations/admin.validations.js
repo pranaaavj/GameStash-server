@@ -440,9 +440,14 @@ export const editCouponSchema = Joi.object({
     'number.min': 'Minimum order value must be at least 0',
   }),
 
-  maxDiscountAmount: Joi.number().min(0).allow('').messages({
-    'number.base': 'Maximum discount must be a number',
-    'number.min': 'Maximum discount must be at least 0',
+  maxDiscountAmount: Joi.when('discountType', {
+    is: 'percentage',
+    then: Joi.number().positive().required().messages({
+      'number.base': 'Maximum discount must be a number',
+      'number.positive': 'Maximum discount must be a positive number',
+      'any.required':
+        'Maximum discount amount is required for percentage-based coupons',
+    }),
   }),
 
   usageLimit: Joi.number().integer().min(1).messages({

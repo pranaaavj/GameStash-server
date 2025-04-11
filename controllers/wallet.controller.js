@@ -47,6 +47,7 @@ export const addMoneyWallet = async (req, res) => {
           type: 'credit',
           amount,
           status: 'pending',
+          description: 'Money added to wallet',
           razorpayOrderId: razorpayOrder.id,
         },
       },

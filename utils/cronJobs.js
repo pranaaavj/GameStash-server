@@ -67,20 +67,20 @@ export const expiredOffersJob = () => {
   });
 };
 
-// export const expiredCouponsJob = () => {
-//   cron.schedule('0 0 * * *', async () => {
-//     const currentTime = new Date();
+export const expiredCouponsJob = () => {
+  cron.schedule('* * * * *', async () => {
+    const currentTime = new Date();
 
-//     const result = await Coupon.updateMany(
-//       { endDate: { $lt: currentTime }, isActive: true },
-//       { isActive: false }
-//     );
+    const result = await Coupon.updateMany(
+      { endDate: { $lt: currentTime }, isActive: true },
+      { isActive: false }
+    );
 
-//     if (result.modifiedCount > 0) {
-//       console.log(`Deactivated ${result.modifiedCount} expired coupons.`);
-//     }
-//   });
-// };
+    if (result.modifiedCount > 0) {
+      console.log(`Deactivated ${result.modifiedCount} expired coupons.`);
+    }
+  });
+};
 
 expiredOffersJob();
-// expiredCouponsJob();
+expiredCouponsJob();

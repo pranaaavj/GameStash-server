@@ -1,3 +1,8 @@
+import util from 'util';
+if (!util.isNullOrUndefined) {
+  util.isNullOrUndefined = (value) => value === null || value === undefined;
+}
+
 import * as tf from '@tensorflow/tfjs-node';
 import path from 'path';
 import fs from 'fs';

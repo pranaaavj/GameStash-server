@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Offer from '../models/offer.model.js';
 import { selectBestOfferForProduct } from '../utils/bestOfferForProduct.js';
 
-const ProductSchema = new mongoose.Schema(
+export const ProductSchema = new mongoose.Schema(
   {
     name: {
       type: String,
