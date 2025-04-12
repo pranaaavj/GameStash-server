@@ -5,7 +5,12 @@ export const aggregatePaginate = async (
   aggregateOptions = {}
 ) => {
   const skip = (page - 1) * limit;
-  const { filter = {}, sort = {}, populate = [] } = aggregateOptions;
+  const {
+    filter = {},
+    sort = {},
+    populate = [],
+    additionalPipeline = [],
+  } = aggregateOptions;
 
   const pipeline = [{ $match: filter }];
 
@@ -34,6 +39,10 @@ export const aggregatePaginate = async (
         $unwind: { path: `$${pop.as}`, preserveNullAndEmptyArrays: true },
       });
   });
+
+  if (additionalPipeline.length > 0) {
+    pipeline.push(...additionalPipeline);
+  }
 
   if (Object.keys(sort).length) pipeline.push({ $sort: sort });
 

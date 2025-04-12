@@ -132,6 +132,30 @@ const OrderSchema = new mongoose.Schema(
 OrderSchema.pre('save', function (next) {
   const statuses = this.orderItems.map((item) => item.status);
 
+  const activeOrderItems = this.orderItems.filter(
+    (item) => item.status !== 'Cancelled'
+  );
+
+  if (this.isModified('orderItems') && activeOrderItems.length > 0) {
+    const currentTotalAmount = activeOrderItems.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+
+    let currentCouponDiscount = 0;
+    if (this.couponDiscount > 0 && this.totalAmount > 0) {
+      currentCouponDiscount =
+        (currentTotalAmount / this.totalAmount) * this.couponDiscount;
+      currentCouponDiscount = Math.round(currentCouponDiscount * 100) / 100;
+    }
+
+    this.finalPrice = Math.max(0, currentTotalAmount - currentCouponDiscount);
+  }
+
+  if (this.orderItems.every((item) => item.status === 'Cancelled')) {
+    this.finalPrice = 0;
+  }
+
   if (statuses.every((status) => status === 'Cancelled')) {
     this.orderStatus = 'Cancelled';
   } else if (statuses.every((status) => status === 'Returned')) {
@@ -143,7 +167,11 @@ OrderSchema.pre('save', function (next) {
   } else if (
     statuses.every((status) => status === 'Delivered' || status === 'Cancelled')
   ) {
-    this.orderStatus = 'Delivered';
+    if (statuses.includes('Delivered') && statuses.includes('Cancelled')) {
+      this.orderStatus = 'Partially Cancelled';
+    } else {
+      this.orderStatus = 'Delivered';
+    }
   } else if (
     statuses.every((status) => status === 'Shipped' || status === 'Cancelled')
   ) {
@@ -188,4 +216,5 @@ OrderSchema.pre('save', function (next) {
 
   next();
 });
+
 export default mongoose.model('Order', OrderSchema);

@@ -72,9 +72,11 @@ export const addGenre = async (req, res) => {
     abortEarly: false,
   });
 
-  const existingGenre = await Genre.findOne({ name });
+  const existingGenre = await Genre.findOne({
+    name: { $regex: `^${name}$`, $options: 'i' },
+  });
   if (existingGenre) {
-    throw new BadRequestError('Genre already exists.');
+    throw new ConflictError('Genre already exists with that name.');
   }
 
   await Genre.create({ name, description });
@@ -103,13 +105,17 @@ export const editGenre = async (req, res) => {
     throw new NotFoundError('No Genre found.');
   }
 
-  const genreExist = await Genre.find({ name });
-  if (genreExist.length > 0 && !genreExist._id.equals(genreId)) {
-    throw new ConflictError('Genre already exist');
+  const existingGenre = await Genre.findOne({
+    name: { $regex: `^${name}$`, $options: 'i' },
+    _id: { $ne: genreId },
+  });
+
+  if (existingGenre) {
+    throw new ConflictError('Genre already exists with that name.');
   }
 
-  genre.name = name || genre.name;
-  genre.description = description || genre.description;
+  genre.name = name ?? genre.name;
+  genre.description = description ?? genre.description;
 
   await genre.save();
 

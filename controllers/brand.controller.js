@@ -1,5 +1,9 @@
 import { paginate } from '../utils/index.js';
-import { NotFoundError, BadRequestError } from '../errors/index.js';
+import {
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+} from '../errors/index.js';
 import Brand from '../models/brand.model.js';
 import { brandSchema } from '../validations/admin.validations.js';
 import { isValidObjectId } from 'mongoose';
@@ -70,9 +74,11 @@ export const addBrand = async (req, res) => {
     abortEarly: false,
   });
 
-  const existingBrand = await Brand.findOne({ name });
+  const existingBrand = await Brand.findOne({
+    name: { $regex: `^${name}$`, $options: 'i' },
+  });
   if (existingBrand) {
-    throw new BadRequestError('Brand already exists.');
+    throw new BadRequestError('Brand already exists with that name.');
   }
 
   await Brand.create({ name, description });
@@ -101,8 +107,17 @@ export const editBrand = async (req, res) => {
     throw new NotFoundError('No Brand found.');
   }
 
-  brand.name = name || brand.name;
-  brand.description = description || brand.description;
+  const existingBrand = await Brand.findOne({
+    name: { $regex: `^${name}$`, $options: 'i' },
+    _id: { $ne: brandId },
+  });
+
+  if (existingBrand) {
+    throw new ConflictError('Brand already exists with that name.');
+  }
+
+  brand.name = name ?? brand.name;
+  brand.description = description ?? brand.description;
 
   await brand.save();
 

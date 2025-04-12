@@ -308,7 +308,6 @@ export const getProducts = async (req, res) => {
     sort = { 'bestOffer.discountValue': -1 };
   }
 
-  // Custom query options
   const queryOptions = {
     filter,
     sort,
@@ -316,23 +315,36 @@ export const getProducts = async (req, res) => {
       {
         from: 'genres',
         localField: 'genre',
-        as: 'genre',
-        match: { isActive: true },
+        foreignField: '_id',
+        as: 'genreData',
         single: true,
       },
       {
         from: 'brands',
         localField: 'brand',
-        as: 'brand',
-        match: { isActive: true },
+        foreignField: '_id',
+        as: 'brandData',
         single: true,
       },
       {
         from: 'offers',
         localField: 'bestOffer',
+        foreignField: '_id',
         as: 'bestOffer',
         match: { isActive: true },
         single: true,
+      },
+    ],
+    // Custom pipeline stages to add after the populate stages
+    additionalPipeline: [
+      // Filter out products with inactive brands or genres
+      {
+        $match: {
+          $and: [
+            { 'genreData.isActive': true },
+            { 'brandData.isActive': true },
+          ],
+        },
       },
     ],
   };
@@ -478,37 +490,18 @@ export const searchProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
 
-  // Extract search, filters, and sorting options
-  const { search, sort, priceRange, genres, brands, offers } = req.query;
+  const { search, sort, genres, brands } = req.query;
 
   const matchStage = { isActive: true };
 
   if (search) {
-    matchStage.$text = { $search: search }; // Requires text index
+    const searchRegex = new RegExp(search, 'i');
+
+    matchStage.$or = [{ name: searchRegex }, { description: searchRegex }];
   }
 
-  if (priceRange) {
-    const [min, max] = priceRange.split('-').map(Number);
-    matchStage.price = {
-      $gte: min || 0,
-      $lte: max || Number.MAX_SAFE_INTEGER,
-    };
-  }
-
-  if (offers) {
-    const { discounted, bundle } = offers;
-    if (discounted === 'true') {
-      matchStage.discount = { $gt: 0 };
-    }
-    if (bundle === 'true') {
-      matchStage.bundle = true;
-    }
-  }
-
-  // Build the aggregation pipeline
   const pipeline = [{ $match: matchStage }];
 
-  // Add lookup stages for genres and brands
   pipeline.push(
     {
       $lookup: {
@@ -525,17 +518,6 @@ export const searchProducts = async (req, res) => {
       },
     },
     {
-      $match: genres
-        ? {
-            'genre._id': {
-              $in: genres
-                .split(',')
-                .map((id) => new mongoose.Types.ObjectId(id)),
-            },
-          }
-        : {},
-    },
-    {
       $lookup: {
         from: 'brands',
         localField: 'brand',
@@ -548,17 +530,6 @@ export const searchProducts = async (req, res) => {
         path: '$brand',
         preserveNullAndEmptyArrays: true,
       },
-    },
-    {
-      $match: brands
-        ? {
-            'brand._id': {
-              $in: brands
-                .split(',')
-                .map((id) => new mongoose.Types.ObjectId(id)),
-            },
-          }
-        : {},
     },
     {
       $lookup: {
@@ -576,23 +547,158 @@ export const searchProducts = async (req, res) => {
     }
   );
 
-  // Add sorting stage
-  const sortOptions = {};
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+    pipeline.push({
+      $match: {
+        $or: [
+          { name: searchRegex },
+          { 'genre.name': searchRegex },
+          { 'brand.name': searchRegex },
+        ],
+      },
+    });
+  }
+
+  pipeline.push({
+    $match: {
+      $and: [
+        { 'genre.isActive': true },
+        { 'brand.isActive': true },
+        {
+          $or: [{ bestOffer: { $eq: null } }, { 'bestOffer.isActive': true }],
+        },
+      ],
+    },
+  });
+
+  if (genres) {
+    pipeline.push({
+      $match: {
+        'genre._id': {
+          $in: genres.split(',').map((id) => new mongoose.Types.ObjectId(id)),
+        },
+      },
+    });
+  }
+
+  if (brands) {
+    pipeline.push({
+      $match: {
+        'brand._id': {
+          $in: brands.split(',').map((id) => new mongoose.Types.ObjectId(id)),
+        },
+      },
+    });
+  }
+
+  const sortStage = {};
+
   if (sort) {
     const [key, order] = sort.split(':');
-    sortOptions[key] = order === 'desc' ? -1 : 1;
+
+    if (key === 'price') {
+      pipeline.push({
+        $addFields: {
+          sortPrice: {
+            $cond: [
+              { $gt: ['$discountedPrice', 0] },
+              '$discountedPrice',
+              '$price',
+            ],
+          },
+        },
+      });
+      sortStage['sortPrice'] = order === 'desc' ? -1 : 1;
+    } else {
+      sortStage[key] = order === 'desc' ? -1 : 1;
+    }
+  } else {
+    sortStage['popularity'] = -1;
   }
 
-  if (Object.keys(sortOptions).length) {
-    pipeline.push({ $sort: sortOptions });
-  }
+  sortStage['_id'] = 1;
 
-  // Add pagination stages
+  pipeline.push({ $sort: sortStage });
   pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
 
-  // Execute the aggregation
   const products = await Product.aggregate(pipeline).exec();
-  const total = await Product.countDocuments(matchStage);
+
+  const countPipeline = [{ $match: matchStage }];
+
+  countPipeline.push(
+    {
+      $lookup: {
+        from: 'genres',
+        localField: 'genre',
+        foreignField: '_id',
+        as: 'genre',
+      },
+    },
+    {
+      $unwind: {
+        path: '$genre',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: 'brands',
+        localField: 'brand',
+        foreignField: '_id',
+        as: 'brand',
+      },
+    },
+    {
+      $unwind: {
+        path: '$brand',
+        preserveNullAndEmptyArrays: true,
+      },
+    }
+  );
+
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+    countPipeline.push({
+      $match: {
+        $or: [
+          { name: searchRegex },
+          { 'genre.name': searchRegex },
+          { 'brand.name': searchRegex },
+        ],
+      },
+    });
+  }
+
+  countPipeline.push({
+    $match: {
+      $and: [{ 'genre.isActive': true }, { 'brand.isActive': true }],
+    },
+  });
+
+  if (genres) {
+    countPipeline.push({
+      $match: {
+        'genre._id': {
+          $in: genres.split(',').map((id) => new mongoose.Types.ObjectId(id)),
+        },
+      },
+    });
+  }
+
+  if (brands) {
+    countPipeline.push({
+      $match: {
+        'brand._id': {
+          $in: brands.split(',').map((id) => new mongoose.Types.ObjectId(id)),
+        },
+      },
+    });
+  }
+
+  countPipeline.push({ $count: 'total' });
+  const countResult = await Product.aggregate(countPipeline).exec();
+  const total = countResult.length > 0 ? countResult[0].total : 0;
 
   res.status(200).json({
     success: true,
@@ -604,146 +710,3 @@ export const searchProducts = async (req, res) => {
     },
   });
 };
-
-// /**
-//   @route GET - /products/search
-//   @desc  User - User searching products
-//  @access Public
-//  /
-// export const searchProducts = async (req, res) => {
-//   const page = parseInt(req.query.page) || 1;
-//   const limit = parseInt(req.query.limit) || 10;
-
-//   const { search, sort, priceRange, genres, brands, offers } = req.query;
-
-//   const matchStage = { isActive: true };
-
-//   if (search) {
-//     matchStage.$text = { $search: search };
-//   }
-
-//   if (priceRange) {
-//     const [min, max] = priceRange.split('-').map(Number);
-//     matchStage.price = {
-//       $gte: min || 0,
-//       $lte: max || Number.MAX_SAFE_INTEGER,
-//     };
-//   }
-
-//   if (offers) {
-//     const { discounted, bundle } = offers;
-//     if (discounted === 'true') {
-//       matchStage.discount = { $gt: 0 };
-//     }
-//     if (bundle === 'true') {
-//       matchStage.bundle = true;
-//     }
-//   }
-
-//   const genreMatch = genres
-//     ? {
-//         'genre._id': {
-//           $in: genres.split(',').map((id) => new mongoose.Types.ObjectId(id)),
-//         },
-//       }
-//     : {};
-
-//   const brandMatch = brands
-//     ? {
-//         'brand._id': {
-//           $in: brands.split(',').map((id) => new mongoose.Types.ObjectId(id)),
-//         },
-//       }
-//     : {};
-
-//   const sortOptions = {};
-//   if (sort) {
-//     const [key, order] = sort.split(':');
-//     sortOptions[key] = order === 'desc' ? -1 : 1;
-//   }
-
-//   if (search) {
-//     sortOptions.textScore = { $meta: 'textScore' };
-//   }
-
-//   const sharedPipeline = [
-//     { $match: matchStage },
-//     {
-//       $lookup: {
-//         from: 'genres',
-//         localField: 'genre',
-//         foreignField: '_id',
-//         as: 'genre',
-//       },
-//     },
-//     {
-//       $unwind: {
-//         path: '$genre',
-//         preserveNullAndEmptyArrays: true,
-//       },
-//     },
-//     { $match: genreMatch },
-//     {
-//       $lookup: {
-//         from: 'brands',
-//         localField: 'brand',
-//         foreignField: '_id',
-//         as: 'brand',
-//       },
-//     },
-//     {
-//       $unwind: {
-//         path: '$brand',
-//         preserveNullAndEmptyArrays: true,
-//       },
-//     },
-//     { $match: brandMatch },
-//   ];
-
-//   const productsPipeline = [...sharedPipeline];
-
-//   if (Object.keys(sortOptions).length) {
-//     productsPipeline.push({ $sort: sortOptions });
-//   }
-
-//   productsPipeline.push(
-//     { $skip: (page - 1) * limit },
-//     { $limit: limit },
-//     {
-//       $project: {
-//         name: 1,
-//         price: 1,
-//         averageRating: 1,
-//         images: 1,
-//         'genre.name': 1,
-//         'brand.name': 1,
-//         platform: 1,
-//         ...(search && { textScore: { $meta: 'textScore' } }),
-//       },
-//     }
-//   );
-
-//   const totalCountPipeline = [...sharedPipeline, { $count: 'count' }];
-
-//   const [results] = await Product.aggregate([
-//     {
-//       $facet: {
-//         products: productsPipeline,
-//         totalCount: totalCountPipeline,
-//       },
-//     },
-//   ]);
-
-//   const products = results.products || [];
-//   const total = results.totalCount.length > 0 ? results.totalCount[0].count : 0;
-
-//   res.status(200).json({
-//     success: true,
-//     message: 'Search results retrieved successfully.',
-//     data: {
-//       products,
-//       totalPages: Math.ceil(total / limit),
-//       currentPage: page,
-//     },
-//   });
-// };

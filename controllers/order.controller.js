@@ -319,6 +319,15 @@ export const retryPayment = async (req, res) => {
     throw new BadRequestError('This order has already been paid.');
   }
 
+  const allItemsCancelled = order.orderItems.every(
+    (item) => item.status === 'Cancelled'
+  );
+  if (allItemsCancelled) {
+    throw new BadRequestError(
+      'Cannot process payment for a fully cancelled order.'
+    );
+  }
+
   const validPaymentMethods = ['Wallet', 'Razorpay'];
   if (!validPaymentMethods.includes(paymentMethod)) {
     throw new BadRequestError('Invalid payment method.');
@@ -394,11 +403,7 @@ export const retryPayment = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Payment completed successfully using wallet balance.',
-      data: {
-        order,
-        originalAmount: order.finalPrice,
-        actualChargedAmount: amountToCharge,
-      },
+      data: order,
     });
   }
 
@@ -438,6 +443,10 @@ export const cancelOrder = async (req, res) => {
     const orderItem = order.orderItems.find((item) =>
       item.product._id.equals(productId)
     );
+
+    if (orderItem.status === 'Cancelled') {
+      throw new BadRequestError('This product has already been cancelled.');
+    }
 
     if (!orderItem) {
       throw new NotFoundError('Product does not exist in this order.');
@@ -497,16 +506,16 @@ export const cancelOrder = async (req, res) => {
 
     orderItem.status = 'Cancelled';
 
-    const remainingItems = order.orderItems.filter(
-      (item) =>
-        !['Cancelled', 'Returned', 'Return Rejected'].includes(item.status)
+    const activeOrderItems = order.orderItems.filter(
+      (item) => item.status !== 'Cancelled'
     );
 
-    if (remainingItems.length === 0) {
-      order.orderStatus = 'Cancelled';
-    } else if (remainingItems.some((item) => item.status === 'Delivered')) {
-      order.orderStatus = 'Partially Cancelled';
-    }
+    const currentTotalAmount = activeOrderItems.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+
+    order.finalPrice = currentTotalAmount;
 
     await order.save();
 
@@ -522,6 +531,10 @@ export const cancelOrder = async (req, res) => {
     throw new BadRequestError(
       `Cannot cancel order as it is already ${order.orderStatus.toLowerCase()}.`
     );
+  }
+
+  if (order.orderItems.every((item) => item.status === 'Cancelled')) {
+    throw new BadRequestError('All items in this order are already cancelled.');
   }
 
   for (const item of order.orderItems) {
@@ -542,19 +555,33 @@ export const cancelOrder = async (req, res) => {
       wallet = await Wallet.create({ userId: order.user, transactions: [] });
     }
 
-    wallet.transactions.push({
-      type: 'credit',
-      amount: order.finalPrice,
-      status: 'completed',
-    });
+    const refundableItems = order.orderItems.filter(
+      (item) => item.status === 'Cancelled' && !order.refundedAmount
+    );
 
-    wallet.balance += Number(order.finalPrice);
-    order.refundedAmount = order.finalPrice;
+    const refundAmount = refundableItems.reduce(
+      (total, item) => total + item.totalPrice,
+      0
+    );
 
-    await wallet.save();
+    if (refundAmount > 0) {
+      wallet.transactions.push({
+        type: 'credit',
+        amount: refundAmount,
+        status: 'completed',
+        description: `Refund for order ${order._id.toString().slice(-6)}`,
+      });
+
+      wallet.balance += Number(refundAmount);
+      order.refundedAmount = refundAmount;
+
+      await wallet.save();
+    }
   }
 
   order.orderStatus = 'Cancelled';
+  order.finalPrice = 0;
+
   await order.save();
 
   res.status(200).json({
