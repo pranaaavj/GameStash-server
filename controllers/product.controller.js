@@ -240,7 +240,9 @@ export const uploadImageCloudinary = async (req, res, next) => {
       return next(new BadRequestError('Missing file buffer'));
     }
 
-    console.log(req.file);
+    console.log('🧪 CLOUDINARY DEBUG:');
+    console.log('cloud_name:', cloudinary.config().cloud_name);
+    console.log('api_key:', cloudinary.config().api_key);
 
     cloudinary.uploader
       .upload_stream(
