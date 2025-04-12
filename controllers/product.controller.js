@@ -243,20 +243,28 @@ export const uploadImageCloudinary = async (req, res, next) => {
     console.log(req.file);
 
     cloudinary.uploader
-      .upload_stream({ folder: 'products' }, (error, uploadedImage) => {
-        if (error) {
-          return next(new InternalServerError('Cloudinary upload failed.'));
-        }
+      .upload_stream(
+        { folder: 'products', resource_type: 'auto' },
+        (error, uploadedImage) => {
+          if (error) {
+            console.error('🔴 Cloudinary upload error:', error);
+            return next(
+              new InternalServerError(
+                error.message || 'Cloudinary upload failed.'
+              )
+            );
+          }
 
-        res.status(200).json({
-          success: true,
-          message: 'Image uploaded successfully',
-          data: {
-            url: uploadedImage.secure_url,
-            publicId: uploadedImage.public_id,
-          },
-        });
-      })
+          res.status(200).json({
+            success: true,
+            message: 'Image uploaded successfully',
+            data: {
+              url: uploadedImage.secure_url,
+              publicId: uploadedImage.public_id,
+            },
+          });
+        }
+      )
       .end(req.file.buffer);
   } catch (error) {
     next(error);
