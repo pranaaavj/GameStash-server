@@ -240,6 +240,8 @@ export const uploadImageCloudinary = async (req, res, next) => {
       return next(new BadRequestError('Missing file buffer'));
     }
 
+    console.log(req.file);
+
     cloudinary.uploader
       .upload_stream({ folder: 'products' }, (error, uploadedImage) => {
         if (error) {
