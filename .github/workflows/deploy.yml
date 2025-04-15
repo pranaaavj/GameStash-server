@@ -40,4 +40,8 @@ jobs:
               -p 3000:3000 \
               --restart unless-stopped \
               gamestash-backend
+              
+            # Clean up old images
+            echo "Cleaning up old and unused images..."
+            docker image prune -a --force
           EOF
