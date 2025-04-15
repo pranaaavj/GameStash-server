@@ -139,7 +139,6 @@ export const addProduct = async (req, res) => {
 export const editProduct = async (req, res) => {
   const { productId } = req.body;
 
-  // Validating object Id
   if (!productId || !isValidObjectId(productId.trim())) {
     throw new BadRequestError(
       'The product ID format seems incorrect. Please check and try again.'
@@ -150,14 +149,12 @@ export const editProduct = async (req, res) => {
     abortEarly: false,
   });
 
-  // Checking for the product
   const oldProduct = await Product.findById({ _id: productId });
   if (!oldProduct) {
     throw new NotFoundError('We couldn’t find the specified product.');
   }
 
   if (updatedProduct.brand) {
-    // Checking for brand if brand is updated
     const brandExist = await Brand.findById(updatedProduct.brand);
     if (!brandExist) {
       throw new NotFoundError('The specified brand is not available.');
@@ -166,7 +163,6 @@ export const editProduct = async (req, res) => {
   }
 
   if (updatedProduct.genre) {
-    // Checking for genre if genre is updated
     const genreExist = await Genre.findById(updatedProduct.genre);
     if (!genreExist) {
       throw new NotFoundError('The specified genre is not available.');
@@ -174,7 +170,6 @@ export const editProduct = async (req, res) => {
     oldProduct.genre = genreExist._id;
   }
 
-  // Looping through updated product
   Object.keys(updatedProduct).forEach((key) => {
     if (key !== 'brand' && key !== 'genre') {
       oldProduct[key] = updatedProduct[key];
@@ -239,10 +234,6 @@ export const uploadImageCloudinary = async (req, res, next) => {
       console.log('Missing file buffer:', req.file);
       return next(new BadRequestError('Missing file buffer'));
     }
-
-    console.log('🧪 CLOUDINARY DEBUG:');
-    console.log('cloud_name:', cloudinary.config().cloud_name);
-    console.log('api_key:', cloudinary.config().api_key);
 
     cloudinary.uploader
       .upload_stream(
