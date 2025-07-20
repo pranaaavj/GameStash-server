@@ -3,6 +3,7 @@ import Offer from '../models/offer.model.js';
 import Coupon from '../models/coupon.model.js';
 import Product from '../models/product.model.js';
 import { selectBestOfferForProduct } from './bestOfferForProduct.js';
+import { trainRecommendationModel } from '../controllers/recommend.controller.js';
 
 export const expiredOffersJob = () => {
   cron.schedule('* * * * *', async () => {
@@ -82,5 +83,19 @@ export const expiredCouponsJob = () => {
   });
 };
 
+export const trainingRecommendationModelJob = () => {
+  cron.schedule('0 2 * * *', async () => {
+    console.log('Running scheduled model training...');
+
+    const result = await trainRecommendationModel();
+    if (result.success) {
+      console.log('Training was successfully completed.');
+    } else {
+      console.log('Error occurred while retraining model.');
+    }
+  });
+};
+
 expiredOffersJob();
 expiredCouponsJob();
+trainingRecommendationModelJob();

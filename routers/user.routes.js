@@ -61,8 +61,8 @@ import { applyReferralCode } from '../controllers/referral.controller.js';
 const router = express.Router();
 
 router // User home products
-  .get('/products', getProducts)
-  .get('/products/search', searchProducts)
+  .get('/products', getProducts) // https:localhost:3000/api/user/products
+  .get('/products/search', searchProducts) // https:localhost:3000/api/user/products/search
   .get('/product/related/:productId', getRelatedProducts)
   .get('/product/:productId', getProduct)
   .get('/products/:genre', getProductsByGenre)
